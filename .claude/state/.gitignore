@@ -1,0 +1,5 @@
+# Local pipeline runtime only — never committed.
+# Plans and progress digests are regenerated per feature; the manifest is
+# machine-written by check_tests.py.
+*
+!.gitignore

@@ -30,3 +30,6 @@ yarn-error.*
 
 # Claude pipeline local runtime state (plans/progress/manifest are machine-local)
 # (the nested .claude/state/.gitignore already keeps this out of the repo)
+
+# Claude Code local settings (per-machine permissions)
+.claude/settings.local.json
