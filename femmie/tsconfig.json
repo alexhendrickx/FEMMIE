@@ -5,6 +5,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
-    }
-  }
+    },
+    "types": ["jest", "node"]
+  },
+  "exclude": ["backend", "**/backend/**"]
 }

@@ -20,7 +20,12 @@
       "package": "com.femmie.app"
     },
     "plugins": [
-      "expo-notifications"
+      "expo-notifications",
+      "expo-sqlite",
+      "expo-secure-store",
+      "react-native-health",
+      "react-native-health-connect",
+      "expo-asset"
     ]
   }
 }
