@@ -11,21 +11,54 @@ import * as SecureStore from 'expo-secure-store';
 
 const DEVICE_KEY_ID = 'femmie_device_key';
 
+// Native platform passkeys require an Associated Domains entitlement
+// (webcredentials:<rpId>) plus a hosted apple-app-site-association file. Until
+// that infrastructure is deployed, create()/get() cannot succeed on-device, so
+// we stay on the dev fallback. A production build with domain association live
+// calls configurePasskeys({ allowNativePasskeys: true }) at startup to switch on
+// the real platform API.
+let _allowNativePasskeys = false;
+
+/**
+ * Enable device-native platform passkeys.
+ * Only pass `true` once the app's Associated Domains entitlement and the
+ * apple-app-site-association file for the relying-party domain are live —
+ * otherwise registration/login will fail on-device.
+ */
+export function configurePasskeys(opts: { allowNativePasskeys: boolean }): void {
+  _allowNativePasskeys = opts.allowNativePasskeys;
+}
+
 type PasskeyCreateResult = { id: string; rawId: string; response: Record<string, string>; type: string };
 type PasskeyGetResult    = { id: string; rawId: string; response: Record<string, string>; type: string };
 
 // ─── Attempt native passkey API ───────────────────────────────────────────────
 
-function getNativePasskeys() {
+// react-native-passkeys exports flat functions (isSupported/create/get), not a
+// `Passkey` namespace. The native call can resolve to `null` (e.g. user cancel).
+type NativePasskeys = {
+  isSupported: () => boolean;
+  create: (opts: unknown) => Promise<PasskeyCreateResult | null>;
+  get:    (opts: unknown) => Promise<PasskeyGetResult | null>;
+};
+
+function getNativePasskeys(): NativePasskeys | null {
+  // Gated until domain association exists — otherwise native passkeys fail
+  // on-device. Falls through to the dev fallback (biometrics + SecureStore).
+  if (!_allowNativePasskeys) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('react-native-passkeys') as {
-      Passkey: {
-        create: (opts: unknown) => Promise<PasskeyCreateResult>;
-        get:    (opts: unknown) => Promise<PasskeyGetResult>;
-        isSupported: () => boolean;
-      };
-    };
+    const mod = require('react-native-passkeys') as Partial<NativePasskeys>;
+    // Verify the real native API is present before trusting it — guards against a
+    // stubbed/partial module so we fall back cleanly instead of crashing.
+    if (
+      typeof mod?.isSupported !== 'function' ||
+      typeof mod?.create !== 'function' ||
+      typeof mod?.get !== 'function'
+    ) {
+      return null;
+    }
+    return mod as NativePasskeys;
   } catch {
     return null;
   }
@@ -107,14 +140,16 @@ export async function createPasskey(
 ): Promise<PasskeyCreateResult> {
   const native = getNativePasskeys();
 
-  if (native?.Passkey.isSupported()) {
-    return native.Passkey.create({
+  if (native?.isSupported()) {
+    const result = await native.create({
       rp: { id: rpId, name: 'Femmie' },
       user: { id: userId, name: userId, displayName: 'Femmie User' },
       challenge,
       pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
       authenticatorSelection: { userVerification: 'required', residentKey: 'required' },
     });
+    if (!result) throw new Error('Passkey creation returned no credential');
+    return result;
   }
 
   return devFallbackCreate(challenge, userId);
@@ -126,12 +161,14 @@ export async function getPasskey(
 ): Promise<PasskeyGetResult> {
   const native = getNativePasskeys();
 
-  if (native?.Passkey.isSupported()) {
-    return native.Passkey.get({
+  if (native?.isSupported()) {
+    const result = await native.get({
       rpId,
       challenge,
       userVerification: 'required',
     });
+    if (!result) throw new Error('Passkey authentication returned no credential');
+    return result;
   }
 
   return devFallbackGet(challenge);
@@ -139,7 +176,7 @@ export async function getPasskey(
 
 export async function hasExistingPasskey(): Promise<boolean> {
   const native = getNativePasskeys();
-  if (native?.Passkey.isSupported()) return true; // Platform handles credential lookup
+  if (native?.isSupported()) return true; // Platform handles credential lookup
   const stored = await SecureStore.getItemAsync(DEVICE_KEY_ID);
   return stored !== null;
 }
