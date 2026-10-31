@@ -61,7 +61,7 @@ export async function readFromHealthConnect(
   try {
     switch (dataTypeId) {
       case 'sleep': {
-        const { records } = await HC.readRecords('SleepSessionRecord', { timeRangeFilter });
+        const { records } = await HC.readRecords('SleepSession', { timeRangeFilter });
         const samples: HealthSample[] = records.map((r: any) => ({
           dataTypeId: 'sleep',
           value: (new Date(r.endTime).getTime() - new Date(r.startTime).getTime()) / 3_600_000,
@@ -72,7 +72,7 @@ export async function readFromHealthConnect(
         return { dataTypeId: 'sleep', samples };
       }
       case 'hrv': {
-        const { records } = await HC.readRecords('HeartRateVariabilityRmssdRecord', { timeRangeFilter });
+        const { records } = await HC.readRecords('HeartRateVariabilityRmssd', { timeRangeFilter });
         const samples: HealthSample[] = records.map((r: any) => ({
           dataTypeId: 'hrv',
           value: r.heartRateVariabilityMillis,
@@ -83,7 +83,7 @@ export async function readFromHealthConnect(
         return { dataTypeId: 'hrv', samples };
       }
       case 'resting_heart_rate': {
-        const { records } = await HC.readRecords('RestingHeartRateRecord', { timeRangeFilter });
+        const { records } = await HC.readRecords('RestingHeartRate', { timeRangeFilter });
         const samples: HealthSample[] = records.map((r: any) => ({
           dataTypeId: 'resting_heart_rate',
           value: r.beatsPerMinute,
@@ -94,7 +94,7 @@ export async function readFromHealthConnect(
         return { dataTypeId: 'resting_heart_rate', samples };
       }
       case 'weight': {
-        const { records } = await HC.readRecords('WeightRecord', { timeRangeFilter });
+        const { records } = await HC.readRecords('Weight', { timeRangeFilter });
         const samples: HealthSample[] = records.map((r: any) => ({
           dataTypeId: 'weight',
           value: r.weight.inKilograms,
@@ -105,7 +105,7 @@ export async function readFromHealthConnect(
         return { dataTypeId: 'weight', samples };
       }
       case 'workouts': {
-        const { records } = await HC.readRecords('ExerciseSessionRecord', { timeRangeFilter });
+        const { records } = await HC.readRecords('ExerciseSession', { timeRangeFilter });
         const samples: HealthSample[] = records.map((r: any) => ({
           dataTypeId: 'workouts',
           value: r.exerciseType ?? 'Workout',
@@ -135,22 +135,22 @@ export async function writeToHealthConnect(
     switch (dataTypeId) {
       case 'cycle_start':
         await HC.insertRecords([{
-          recordType: 'MenstruationFlowRecord',
+          recordType: 'MenstruationFlow',
           flow: value as number,
           time: date.toISOString(),
         }]);
         return true;
       case 'ovulation':
         await HC.insertRecords([{
-          recordType: 'OvulationTestRecord',
-          result: 'positive',
+          recordType: 'OvulationTest',
+          result: HC.OvulationTestResult.POSITIVE,
           time: date.toISOString(),
         }]);
         return true;
       case 'sexual_activity':
         await HC.insertRecords([{
-          recordType: 'SexualActivityRecord',
-          protectionUsed: 'unknown',
+          recordType: 'SexualActivity',
+          protectionUsed: HC.ProtectionUsed.UNKNOWN,
           time: date.toISOString(),
         }]);
         return true;
