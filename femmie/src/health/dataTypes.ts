@@ -9,7 +9,7 @@ export const HEALTH_DATA_TYPES: HealthDataType[] = [
     icon: '🌙',
     unit: 'hours',
     iosType: 'HKCategoryTypeIdentifierSleepAnalysis',
-    androidType: 'SleepSessionRecord',
+    androidType: 'SleepSession',
   },
   {
     id: 'hrv',
@@ -18,7 +18,7 @@ export const HEALTH_DATA_TYPES: HealthDataType[] = [
     icon: '💓',
     unit: 'ms',
     iosType: 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN',
-    androidType: 'HeartRateVariabilityRecord',
+    androidType: 'HeartRateVariabilityRmssd',
   },
   {
     id: 'resting_heart_rate',
@@ -27,7 +27,7 @@ export const HEALTH_DATA_TYPES: HealthDataType[] = [
     icon: '❤️',
     unit: 'bpm',
     iosType: 'HKQuantityTypeIdentifierRestingHeartRate',
-    androidType: 'RestingHeartRateRecord',
+    androidType: 'RestingHeartRate',
   },
   {
     id: 'weight',
@@ -36,7 +36,7 @@ export const HEALTH_DATA_TYPES: HealthDataType[] = [
     icon: '⚖️',
     unit: 'kg',
     iosType: 'HKQuantityTypeIdentifierBodyMass',
-    androidType: 'WeightRecord',
+    androidType: 'Weight',
   },
   {
     id: 'workouts',
@@ -45,7 +45,7 @@ export const HEALTH_DATA_TYPES: HealthDataType[] = [
     icon: '🏃',
     unit: '',
     iosType: 'HKWorkoutTypeIdentifier',
-    androidType: 'ExerciseSessionRecord',
+    androidType: 'ExerciseSession',
   },
 
   // ── Write ────────────────────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ export const HEALTH_DATA_TYPES: HealthDataType[] = [
     icon: '📅',
     unit: '',
     iosType: 'HKCategoryTypeIdentifierMenstrualFlow',
-    androidType: 'MenstruationFlowRecord',
+    androidType: 'MenstruationFlow',
   },
   {
     id: 'ovulation',
@@ -65,7 +65,7 @@ export const HEALTH_DATA_TYPES: HealthDataType[] = [
     icon: '🥚',
     unit: '',
     iosType: 'HKCategoryTypeIdentifierOvulationTestResult',
-    androidType: 'OvulationTestRecord',
+    androidType: 'OvulationTest',
   },
   {
     id: 'sexual_activity',
@@ -74,7 +74,7 @@ export const HEALTH_DATA_TYPES: HealthDataType[] = [
     icon: '🔒',
     unit: '',
     iosType: 'HKCategoryTypeIdentifierSexualActivity',
-    androidType: 'SexualActivityRecord',
+    androidType: 'SexualActivity',
   },
 ];
 

@@ -20,9 +20,9 @@ export async function scheduleBedtimeReminder(
       sound: true,
     },
     trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour,
       minute,
-      repeats: true,
     },
   });
 }

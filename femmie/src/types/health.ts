@@ -1,3 +1,5 @@
+import type { RecordType } from 'react-native-health-connect';
+
 export type SyncDirection = 'read' | 'write';
 export type SyncStatus = 'success' | 'skipped' | 'error' | 'permission_denied';
 
@@ -9,8 +11,8 @@ export interface HealthDataType {
   unit: string;
   /** HKQuantityTypeIdentifier / HKCategoryTypeIdentifier */
   iosType: string;
-  /** Health Connect record type string */
-  androidType: string;
+  /** Health Connect record type (without the "Record" suffix, e.g. 'SleepSession') */
+  androidType: RecordType;
 }
 
 export interface SyncEvent {
