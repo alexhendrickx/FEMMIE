@@ -35,6 +35,22 @@ const SECURE_STORE_WRAPPED = 'femmie_wrapped_key_v1';
 // In-memory key — never written to AsyncStorage or logs
 let _plaintextDek: Uint8Array | null = null;
 
+// When false, the service refuses to emit (or read) the readable dev fallback.
+// A missing key or an unavailable libsodium then becomes a hard error instead
+// of a silent plaintext write — the fail-closed posture a production build must
+// run with. Defaults to true so Expo Go / tests keep working without libsodium.
+let _allowPlaintextFallback = true;
+
+/**
+ * Configure runtime encryption safety.
+ * Production builds MUST call `configureEncryption({ allowPlaintextFallback: false })`
+ * at startup: that way any failure to load libsodium or unwrap the DEK throws
+ * loudly instead of silently storing/sending readable plaintext.
+ */
+export function configureEncryption(opts: { allowPlaintextFallback: boolean }): void {
+  _allowPlaintextFallback = opts.allowPlaintextFallback;
+}
+
 // ─── Key management ───────────────────────────────────────────────────────────
 
 /** Generate a fresh DEK. Call once on account creation. */
@@ -126,6 +142,12 @@ export async function loadDEK(apiBase: string, authToken: string): Promise<boole
 export function encrypt(value: unknown): EncryptedPayload {
   const sodium = getSodium();
   if (!sodium || !_plaintextDek) {
+    if (!_allowPlaintextFallback) {
+      // Fail closed: never emit readable plaintext in a production build.
+      throw new Error(
+        'Encryption unavailable (libsodium or DEK missing) and plaintext fallback is disabled',
+      );
+    }
     // Dev fallback: base64-only, clearly labeled — never use in production
     const raw = JSON.stringify(value);
     return {
@@ -149,6 +171,8 @@ export function encrypt(value: unknown): EncryptedPayload {
 /** Decrypt an EncryptedPayload back to the original value. Returns null on failure. */
 export function decrypt<T>(payload: EncryptedPayload): T | null {
   if (payload.nonce === 'PLAINTEXT_FALLBACK') {
+    // In fail-closed mode we refuse to interpret unencrypted payloads.
+    if (!_allowPlaintextFallback) return null;
     try {
       return JSON.parse(Buffer.from(payload.ciphertext, 'base64').toString()) as T;
     } catch {

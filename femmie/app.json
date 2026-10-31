@@ -25,7 +25,8 @@
       "expo-secure-store",
       "react-native-health",
       "react-native-health-connect",
-      "expo-asset"
+      "expo-asset",
+      "react-native-libsodium"
     ]
   }
 }
