@@ -13,6 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { OnboardingScreen, ReconnectBanner } from './src/components/Onboarding';
 import { CycleCalendar } from './src/components/CycleCalendar';
+import { CycleSummary } from './src/components/CycleRing';
 import { DailyLogSheet } from './src/components/DailyLog/DailyLogSheet';
 import { HealthIntegrationScreen } from './src/components/HealthIntegration/HealthIntegrationScreen';
 import { PrivacyScreen } from './src/components/PrivacyScreen';
@@ -66,6 +67,7 @@ function MainApp() {
         {/* ── Screens ── */}
         {tab === 'home' && (
           <View style={styles.screen}>
+            <CycleSummary onPressRing={() => setLogOpen(true)} />
             <CycleCalendar days={DEMO_DAYS} onDayLog={() => setLogOpen(true)} />
             <TouchableOpacity
               style={styles.fab}

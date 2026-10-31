@@ -10,6 +10,27 @@ const API_BASE = 'https://api.femmie.app';
 const TOKEN_KEY   = 'femmie_token';
 const REFRESH_KEY = 'femmie_refresh';
 
+/**
+ * Dev-only offline auth.
+ *
+ * There is no reachable auth backend yet, so in development builds we complete
+ * the WebAuthn ceremony locally: the biometric step still runs (via
+ * passkeyService's dev fallback) but the server round-trips are stubbed out so
+ * onboarding can finish on-device. `__DEV__` is `false` in any release build,
+ * so production always takes the real `fetch` path — this never weakens
+ * passkey/PASETO auth in a shipped app.
+ */
+const AUTH_OFFLINE_MODE = __DEV__;
+const OFFLINE_RP_ID = 'femmie.app';
+
+function offlineToken(kind: 'access' | 'refresh'): string {
+  return `dev.offline.${kind}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
+}
+
+function offlineTokens(): AuthTokens {
+  return { token: offlineToken('access'), refreshToken: offlineToken('refresh') };
+}
+
 // ─── Token storage ────────────────────────────────────────────────────────────
 
 export async function storeTokens(tokens: AuthTokens): Promise<void> {
@@ -32,6 +53,13 @@ export async function clearTokens(): Promise<void> {
 // ─── Registration ─────────────────────────────────────────────────────────────
 
 export async function registerBegin(): Promise<RegisterBeginResponse> {
+  if (AUTH_OFFLINE_MODE) {
+    return {
+      challenge: offlineToken('access'),
+      rpId: OFFLINE_RP_ID,
+      userId: `dev-user-${Date.now()}`,
+    };
+  }
   const res = await fetch(`${API_BASE}/auth/register/begin`, { method: 'POST' });
   if (!res.ok) throw new Error(`register/begin failed: ${res.status}`);
   return res.json();
@@ -42,6 +70,7 @@ export async function registerFinish(
   challenge: string,
   credential: unknown,
 ): Promise<AuthTokens> {
+  if (AUTH_OFFLINE_MODE) return offlineTokens();
   const res = await fetch(`${API_BASE}/auth/register/finish`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -54,6 +83,7 @@ export async function registerFinish(
 // ─── Login ────────────────────────────────────────────────────────────────────
 
 export async function loginBegin(): Promise<LoginBeginResponse> {
+  if (AUTH_OFFLINE_MODE) return { challenge: offlineToken('access') };
   const res = await fetch(`${API_BASE}/auth/login/begin`, { method: 'POST' });
   if (!res.ok) throw new Error(`login/begin failed: ${res.status}`);
   return res.json();
@@ -63,6 +93,7 @@ export async function loginFinish(
   challenge: string,
   assertion: unknown,
 ): Promise<AuthTokens> {
+  if (AUTH_OFFLINE_MODE) return offlineTokens();
   const res = await fetch(`${API_BASE}/auth/login/finish`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -75,6 +106,11 @@ export async function loginFinish(
 // ─── Token refresh ────────────────────────────────────────────────────────────
 
 export async function refreshAccessToken(refreshToken: string): Promise<string | null> {
+  if (AUTH_OFFLINE_MODE) {
+    const fresh = offlineToken('access');
+    await storeTokens({ token: fresh, refreshToken });
+    return fresh;
+  }
   try {
     const res = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
@@ -93,6 +129,10 @@ export async function refreshAccessToken(refreshToken: string): Promise<string |
 // ─── Logout ───────────────────────────────────────────────────────────────────
 
 export async function logout(token: string): Promise<void> {
+  if (AUTH_OFFLINE_MODE) {
+    await clearTokens();
+    return;
+  }
   try {
     await fetch(`${API_BASE}/auth/session`, {
       method: 'DELETE',
