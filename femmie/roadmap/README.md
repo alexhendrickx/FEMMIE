@@ -1,5 +1,19 @@
 # Femmie — Claude Build Roadmap
 
+> **⚠️ UX direction (2026) — read `specs/ux-decisions.md` + `specs/app-vision.md` first.**
+> After 6 design rounds the app is reframed as a **daily ritual, not a dashboard**:
+> notification → 10-second swipe flow → one insight → close. Two destinations only —
+> **Today** and **You** (which holds History, Health, Privacy, Settings). No bottom tab
+> bar, no streak pressure. This **supersedes the Phase-1 UX** of several files below:
+> - `F1-06-NAV-app-shell-navigation.md` → Today root + "You" sheet (no 3-tab bar).
+> - `F1-02-daily-logging.md` → swipe-step flow (Duolingo-style), morph-to-✓, smart order.
+> - `F1-01-cycle-calendar.md` → History with Week/Month/List, lives under You.
+> - `F1-05-period-prediction.md` → colour-adaptive ring + "upcoming in N days".
+> - `F1-04b-AUTH` → 2-step onboarding (date → cycle length).
+> - `F1-06-free-premium-tier.md` → premium under You; **never gates the daily flow**.
+> - Personal 5–8 symptoms by category = pull-forward of `F2-13`.
+> Later phases are **modes/insights that reskin Today + the flow**, not new destinations.
+
 Each folder below is one phase. Each file is one feature prompt — ready to paste into Claude.
 
 **Tech stack (paste at top of any prompt if needed):**
