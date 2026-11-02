@@ -35,3 +35,7 @@ yarn-error.*
 
 # Claude Code local settings (per-machine permissions)
 .claude/settings.local.json
+
+# local delivery artifacts
+femmie-work.bundle
+*.bundle

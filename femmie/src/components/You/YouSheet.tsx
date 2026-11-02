@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { CycleCalendar } from '../CycleCalendar';
+import { HistoryView } from './HistoryView';
 import { HealthIntegrationScreen } from '../HealthIntegration/HealthIntegrationScreen';
 import { PrivacyScreen } from '../PrivacyScreen';
 import { SettingsScreen } from './SettingsScreen';
@@ -96,7 +96,7 @@ export function YouSheet({ visible, onClose, calendarDays, onCalendarDayLog }: Y
         )}
 
         {view === 'history' && (
-          <CycleCalendar days={calendarDays} onDayLog={onCalendarDayLog} />
+          <HistoryView calendarDays={calendarDays} onDayLog={onCalendarDayLog} />
         )}
         {view === 'health' && <HealthIntegrationScreen />}
         {view === 'privacy' && <PrivacyScreen />}
