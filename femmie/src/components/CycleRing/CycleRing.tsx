@@ -27,13 +27,33 @@ interface CycleRingProps {
   cycleDay: number | null;
   phase: CyclePhase | null;
   progress: number; // 0..1 fraction of the cycle elapsed
+  /** Days until the predicted next period (null when not predictable yet). */
+  daysUntil?: number | null;
   onPress: () => void;
 }
 
-export function CycleRing({ cycleDay, phase, progress, onPress }: CycleRingProps) {
+export function CycleRing({ cycleDay, phase, progress, daysUntil, onPress }: CycleRingProps) {
   const arcColor = phase ? PHASE_COLOR[phase] : colors.border;
   const clamped = Math.max(0, Math.min(1, progress));
   const dashOffset = CIRCUMFERENCE * (1 - clamped);
+
+  // Decision #15/#18: lead with "in N days" to the next period; fall back to the
+  // cycle day + phase until there's enough history to predict.
+  const hasCountdown = daysUntil !== null && daysUntil !== undefined;
+  const bigValue = hasCountdown
+    ? String(Math.max(0, daysUntil))
+    : cycleDay !== null
+      ? String(cycleDay)
+      : '—';
+  const bigLabel = hasCountdown
+    ? daysUntil <= 0
+      ? 'period due'
+      : daysUntil === 1
+        ? 'day to period'
+        : 'days to period'
+    : phase
+      ? PHASE_LABEL[phase]
+      : 'No data yet';
 
   return (
     <Pressable
@@ -69,10 +89,8 @@ export function CycleRing({ cycleDay, phase, progress, onPress }: CycleRingProps
         )}
       </Svg>
       <View style={styles.centerOverlay} pointerEvents="none">
-        <Text style={styles.cycleDay}>{cycleDay !== null ? cycleDay : '—'}</Text>
-        <Text style={styles.phaseLabel}>
-          {phase ? PHASE_LABEL[phase] : 'No data yet'}
-        </Text>
+        <Text style={styles.cycleDay}>{bigValue}</Text>
+        <Text style={styles.phaseLabel}>{bigLabel}</Text>
       </View>
     </Pressable>
   );

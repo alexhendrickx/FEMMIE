@@ -8,6 +8,7 @@ import {
   cycleLengths,
   cyclePhase,
   currentCycleDay,
+  daysBetween,
   extractPeriodStarts,
   predictNextPeriod,
 } from '../../lib/cycle';
@@ -35,6 +36,10 @@ export function CycleSummary({ onPressRing }: CycleSummaryProps) {
     const phase = cycleDay !== null ? cyclePhase(cycleDay, avgLength) : null;
     const progress = cycleDay !== null ? cycleDay / avgLength : 0;
     const prediction = predictNextPeriod(starts, today);
+    const daysUntil =
+      prediction.mostLikely !== undefined
+        ? daysBetween(today, prediction.mostLikely)
+        : null;
 
     let state: CycleSummaryState;
     if (cycleDay === null) {
@@ -47,7 +52,7 @@ export function CycleSummary({ onPressRing }: CycleSummaryProps) {
       state = 'normal';
     }
 
-    return { cycleDay, phase, progress, state, prediction };
+    return { cycleDay, phase, progress, state, prediction, daysUntil };
   }, [logs]);
 
   return (
@@ -56,6 +61,7 @@ export function CycleSummary({ onPressRing }: CycleSummaryProps) {
         cycleDay={derived.cycleDay}
         phase={derived.phase}
         progress={derived.progress}
+        daysUntil={derived.daysUntil}
         onPress={onPressRing}
       />
       <PredictionLine state={derived.state} prediction={derived.prediction} />
