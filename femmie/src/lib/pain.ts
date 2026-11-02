@@ -10,7 +10,7 @@ import {
   type LocationCount,
   type MedicationStat,
 } from '../types/pain';
-import { extractPeriodStarts, averageCycleLength, cyclePositionFor } from './cycle';
+import { averageCycleLength, cyclePositionFor, isIsoDate } from './cycle';
 
 /**
  * Pain-event aggregation for insights + clinician export (F2-11).
@@ -24,10 +24,14 @@ import { extractPeriodStarts, averageCycleLength, cyclePositionFor } from './cyc
 const REGION_SET: ReadonlySet<string> = new Set(BODY_REGIONS);
 
 export function isValidPainEvent(event: PainEvent): boolean {
+  if (!event) return false;
+  if (typeof event.id !== 'string' || event.id.trim().length === 0) return false;
+  if (!isIsoDate(event.date)) return false;
   if (!Number.isFinite(event.intensity)) return false;
   if (event.intensity < PAIN_INTENSITY_MIN || event.intensity > PAIN_INTENSITY_MAX) return false;
   if (!Number.isFinite(event.durationMin) || event.durationMin < 0) return false;
-  if (!event.locations.every((r) => REGION_SET.has(r))) return false;
+  if (!Array.isArray(event.locations) || !event.locations.every((r) => REGION_SET.has(r))) return false;
+  if (!Array.isArray(event.medications)) return false;
   return event.medications.every(
     (m) =>
       m.name.trim().length > 0 &&
@@ -135,6 +139,3 @@ export function painSummary(events: PainEvent[], starts: string[]): PainSummary 
       sorted.length > 0 ? { from: sorted[0].date, to: sorted[sorted.length - 1].date } : null,
   };
 }
-
-/** Convenience: derive period-starts from cycle logs for callers holding DailyLogs. */
-export { extractPeriodStarts };

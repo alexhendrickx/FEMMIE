@@ -7,9 +7,10 @@ import type { PainEvent } from './pain';
  * Data portability payload (Feature F5-32).
  *
  * This is the user's OWN data, decrypted, so they can take it with them (GDPR-style
- * portability). The export file itself should be encrypted / password-protected by the
- * caller before it leaves the device — this module only defines the shape and does the
- * shape validation; it performs no crypto and no I/O.
+ * portability). This payload is the ENTIRE health history in plaintext: the caller MUST
+ * encrypt / password-protect the serialized export (via `services/encryption.ts`) before
+ * it leaves the device. This module only defines the shape and validates it — it performs
+ * no crypto and no I/O, so the one encryption boundary stays in services/encryption.ts.
  */
 export const EXPORT_SCHEMA_VERSION = 1;
 

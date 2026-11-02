@@ -4,6 +4,11 @@ import {
   type ExportInput,
   type ImportResult,
 } from '../types/portability';
+import { isIsoDate } from './cycle';
+import { isValidDrspEntry } from './mood';
+import { isValidPainEvent } from './pain';
+import type { DrspEntry } from '../types/mood';
+import type { PainEvent } from '../types/pain';
 
 /**
  * Build / serialize / parse the portable data payload (F5-32).
@@ -13,8 +18,6 @@ import {
  * crypto out of this module keeps it deterministic and unit-testable, and keeps the one
  * encryption boundary in services/encryption.ts (DRY + auditable).
  */
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Assemble a complete export payload, stamping the schema version + timestamp. */
 export function buildExport(input: ExportInput, now: Date = new Date()): FemmieExport {
@@ -42,8 +45,8 @@ export function validateExport(obj: unknown): string[] {
   const errors: string[] = [];
   if (!isObject(obj)) return ['Export is not an object'];
 
-  if (typeof obj.schemaVersion !== 'number') {
-    errors.push('Missing or invalid schemaVersion');
+  if (typeof obj.schemaVersion !== 'number' || !Number.isInteger(obj.schemaVersion) || obj.schemaVersion < 1) {
+    errors.push('Missing or invalid schemaVersion (must be a positive integer)');
   } else if (obj.schemaVersion > EXPORT_SCHEMA_VERSION) {
     errors.push(
       `Export schema v${obj.schemaVersion} is newer than this app supports (v${EXPORT_SCHEMA_VERSION}) — update the app to import it`,
@@ -58,18 +61,23 @@ export function validateExport(obj: unknown): string[] {
     errors.push('logs must be an array');
   } else {
     obj.logs.forEach((log, i) => {
-      if (!isObject(log) || typeof log.date !== 'string' || !ISO_DATE.test(log.date)) {
+      if (!isObject(log) || !isIsoDate(log.date)) {
         errors.push(`logs[${i}] has a missing/invalid date`);
-      } else if (!Array.isArray((log as { entries?: unknown }).entries)) {
-        errors.push(`logs[${i}].entries must be an array`);
+        return;
       }
+      if (!Array.isArray(log.entries)) errors.push(`logs[${i}].entries must be an array`);
+      if (typeof log.cycleDay !== 'number') errors.push(`logs[${i}].cycleDay must be a number`);
+      if (typeof log.savedAt !== 'string') errors.push(`logs[${i}].savedAt must be a string`);
     });
   }
 
-  for (const key of ['customTags', 'drspEntries', 'painEvents'] as const) {
-    if (obj[key] !== undefined && !Array.isArray(obj[key])) {
-      errors.push(`${key} must be an array when present`);
-    }
+  // Nested health records are validated with their own validators so a corrupt entry
+  // is rejected at import rather than silently restored.
+  validateArraySection(obj.drspEntries, 'drspEntries', (e) => isValidDrspEntry(e as DrspEntry), errors);
+  validateArraySection(obj.painEvents, 'painEvents', (e) => isValidPainEvent(e as PainEvent), errors);
+
+  if (obj.customTags !== undefined && !Array.isArray(obj.customTags)) {
+    errors.push('customTags must be an array when present');
   }
 
   if (obj.settings !== undefined && !isObject(obj.settings)) {
@@ -77,6 +85,22 @@ export function validateExport(obj: unknown): string[] {
   }
 
   return errors;
+}
+
+function validateArraySection(
+  value: unknown,
+  key: string,
+  isValidElement: (e: unknown) => boolean,
+  errors: string[],
+): void {
+  if (value === undefined) return;
+  if (!Array.isArray(value)) {
+    errors.push(`${key} must be an array when present`);
+    return;
+  }
+  value.forEach((el, i) => {
+    if (!isObject(el) || !isValidElement(el)) errors.push(`${key}[${i}] is invalid`);
+  });
 }
 
 /**

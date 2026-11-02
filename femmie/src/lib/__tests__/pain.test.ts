@@ -39,6 +39,11 @@ describe('isValidPainEvent', () => {
       isValidPainEvent(event({ date: isoAt(1), medications: [{ name: '  ', effectiveness: 3 }] })),
     ).toBe(false);
   });
+
+  test('rejects a malformed date or an empty id (would corrupt an export)', () => {
+    expect(isValidPainEvent(event({ id: 'x', date: '01/01/2026' }))).toBe(false);
+    expect(isValidPainEvent({ ...event({ date: isoAt(1) }), id: '' })).toBe(false);
+  });
 });
 
 describe('topLocations', () => {
@@ -51,6 +56,11 @@ describe('topLocations', () => {
     const top = topLocations(events, 2);
     expect(top[0]).toEqual({ region: 'head', count: 2 });
     expect(top.map((l) => l.region)).toEqual(['head', 'lower_back']);
+  });
+
+  test('breaks count ties alphabetically for a stable order', () => {
+    const events = [event({ date: isoAt(1), locations: ['pelvis', 'head'] })];
+    expect(topLocations(events).map((l) => l.region)).toEqual(['head', 'pelvis']);
   });
 });
 

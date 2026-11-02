@@ -21,13 +21,17 @@ import { averageCycleLength, cyclePositionFor } from './cycle';
 
 /** A cycle's mean DRSP severity at/above this is "severe". */
 export const SEVERE_SEVERITY_THRESHOLD = 4;
-/** The safeguard only triggers once a severe pattern holds across this many cycles. */
+/** The safeguard only triggers once a severe pattern appears in this many cycles (not necessarily consecutive). */
 export const MIN_SEVERE_CYCLES = 3;
+/** A cycle must have at least this many logged DRSP days before it can count as "severe" — so a handful of isolated bad days can't trip the clinician nudge. */
+export const MIN_DRSP_DAYS_PER_SEVERE_CYCLE = 5;
 
 export function isValidDrspEntry(entry: DrspEntry): boolean {
   return (
+    !!entry &&
+    Array.isArray(entry.scores) &&
     entry.scores.length === DRSP_ITEM_COUNT &&
-    entry.scores.every((s) => Number.isFinite(s) && s >= DRSP_MIN && s <= DRSP_MAX)
+    entry.scores.every((s) => Number.isInteger(s) && s >= DRSP_MIN && s <= DRSP_MAX)
   );
 }
 
@@ -67,11 +71,14 @@ export function severityByCycle(entries: DrspEntry[], starts: string[]): CycleSe
 }
 
 /**
- * Evaluate the PMDD-aware safeguard. Triggers only when at least MIN_SEVERE_CYCLES
- * cycles have a mean severity at/above SEVERE_SEVERITY_THRESHOLD — and never when the
- * user has already dismissed it (dismissal is remembered indefinitely by the caller).
+ * Evaluate the PMDD-aware safeguard. A cycle counts as "severe" only when it has at
+ * least MIN_DRSP_DAYS_PER_SEVERE_CYCLE logged days AND a mean severity at/above
+ * SEVERE_SEVERITY_THRESHOLD. The safeguard triggers once at least MIN_SEVERE_CYCLES
+ * such cycles exist (not necessarily consecutive) — and never when the user has already
+ * dismissed it (dismissal is remembered indefinitely by the caller).
  *
- * This is support, not diagnosis: the basis sentence is phrased accordingly.
+ * This is support, not diagnosis: the basis sentence is phrased accordingly, and the
+ * reassurance copy never over-promises when the user may be in distress.
  */
 export function evaluateMoodSafeguard(
   entries: DrspEntry[],
@@ -79,14 +86,16 @@ export function evaluateMoodSafeguard(
   dismissed = false,
 ): MoodSafeguard {
   const severeCycles = severityByCycle(entries, starts).filter(
-    (c) => c.meanSeverity >= SEVERE_SEVERITY_THRESHOLD,
+    (c) =>
+      c.entryCount >= MIN_DRSP_DAYS_PER_SEVERE_CYCLE &&
+      c.meanSeverity >= SEVERE_SEVERITY_THRESHOLD,
   ).length;
 
   const triggered = !dismissed && severeCycles >= MIN_SEVERE_CYCLES;
 
   const basis = triggered
     ? `These patterns have been strong across ${severeCycles} cycles and may be worth discussing with a doctor.`
-    : 'Keep logging — nothing here needs action right now.';
+    : 'No pattern to flag right now — keep logging if it helps you.';
 
   return { triggered, severeCycles, basis };
 }

@@ -19,14 +19,20 @@ function entry(dateOff: number, severity: number): DrspEntry {
   return { date: isoAt(dateOff), scores: Array(DRSP_ITEM_COUNT).fill(severity) };
 }
 
+/** `days` DRSP entries inside the cycle starting at `cycleStartOff`, all at `severity`. */
+function cycleEntries(cycleStartOff: number, severity: number, days = 5): DrspEntry[] {
+  return Array.from({ length: days }, (_, i) => entry(cycleStartOff + 10 + i, severity));
+}
+
 // 28-day cycle starts at offsets 0, 28, 56, 84, 112 …
 const starts = [0, 28, 56, 84, 112].map(isoAt);
 
 describe('DRSP validation + scoring', () => {
-  test('rejects wrong length or out-of-range scores', () => {
+  test('rejects wrong length, out-of-range, or non-integer scores', () => {
     expect(isValidDrspEntry({ date: isoAt(0), scores: Array(9).fill(3) })).toBe(false);
     expect(isValidDrspEntry({ date: isoAt(0), scores: Array(10).fill(7) })).toBe(false);
     expect(isValidDrspEntry({ date: isoAt(0), scores: Array(10).fill(0) })).toBe(false);
+    expect(isValidDrspEntry({ date: isoAt(0), scores: Array(10).fill(3.5) })).toBe(false); // non-integer
     expect(isValidDrspEntry(entry(0, 3))).toBe(true);
   });
 
@@ -64,15 +70,14 @@ describe('severityByCycle', () => {
 
 describe('evaluateMoodSafeguard', () => {
   test('does not trigger below the cycle threshold', () => {
-    const entries = [entry(10, 5), entry(38, 5)]; // 2 severe cycles only
+    const entries = [...cycleEntries(0, 5), ...cycleEntries(28, 5)]; // 2 severe cycles
     const sg = evaluateMoodSafeguard(entries, starts);
     expect(sg.severeCycles).toBe(2);
     expect(sg.triggered).toBe(false);
   });
 
-  test('triggers once a severe pattern holds across >= MIN_SEVERE_CYCLES', () => {
-    // severe (>=4) in cycles 0,1,2
-    const entries = [entry(10, 5), entry(38, 4), entry(66, 6)];
+  test('triggers once a severe pattern appears in >= MIN_SEVERE_CYCLES cycles', () => {
+    const entries = [...cycleEntries(0, 5), ...cycleEntries(28, 4), ...cycleEntries(56, 6)];
     const sg = evaluateMoodSafeguard(entries, starts);
     expect(sg.severeCycles).toBe(MIN_SEVERE_CYCLES);
     expect(sg.triggered).toBe(true);
@@ -80,14 +85,31 @@ describe('evaluateMoodSafeguard', () => {
   });
 
   test('a dismissed safeguard never triggers again', () => {
-    const entries = [entry(10, 5), entry(38, 5), entry(66, 5)];
+    const entries = [...cycleEntries(0, 5), ...cycleEntries(28, 5), ...cycleEntries(56, 5)];
     const sg = evaluateMoodSafeguard(entries, starts, /* dismissed */ true);
     expect(sg.severeCycles).toBe(3);
     expect(sg.triggered).toBe(false);
   });
 
-  test('cycles just below the severe threshold do not count', () => {
-    const entries = [entry(10, 3.9999), entry(38, 3), entry(66, 2)];
+  test('a few isolated severe days do NOT make a severe cycle (min logged days)', () => {
+    // 3 cycles each with high severity but only 3 logged days → below the day minimum
+    const entries = [
+      ...cycleEntries(0, 6, 3),
+      ...cycleEntries(28, 6, 3),
+      ...cycleEntries(56, 6, 3),
+    ];
+    const sg = evaluateMoodSafeguard(entries, starts);
+    expect(sg.severeCycles).toBe(0);
+    expect(sg.triggered).toBe(false);
+  });
+
+  test('cycles whose mean sits just below the threshold do not count', () => {
+    // 5 logged days, each day mean 3.5 (scores [4×5, 3×5]) → cycle mean 3.5 < 4
+    const mildDay = (off: number): DrspEntry => ({
+      date: isoAt(off),
+      scores: [4, 4, 4, 4, 4, 3, 3, 3, 3, 3],
+    });
+    const entries = [10, 11, 12, 13, 14].map(mildDay);
     const sg = evaluateMoodSafeguard(entries, starts);
     expect(sg.severeCycles).toBe(0);
     expect(sg.triggered).toBe(false);

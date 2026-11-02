@@ -4,6 +4,12 @@ import type { CyclePhase, Prediction } from '../types/cycle';
 export const MAX_INTRA_PERIOD_GAP = 2; // days — longest gap between flow days within one period
 const MIN_CYCLE_GAP = 15;       // days
 
+/** Canonical YYYY-MM-DD shape, shared across the date-aware modules. */
+export const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+export function isIsoDate(s: unknown): s is string {
+  return typeof s === 'string' && ISO_DATE_RE.test(s);
+}
+
 function parseUTC(iso: string): number {
   return Date.parse(`${iso}T00:00:00Z`);
 }

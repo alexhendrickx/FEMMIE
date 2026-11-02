@@ -90,4 +90,30 @@ describe('parseImport validation', () => {
     });
     expect(errors.some((e) => e.includes('customTags'))).toBe(true);
   });
+
+  test('rejects a zero / non-integer schema version', () => {
+    expect(parseImport(JSON.stringify({ schemaVersion: 0, exportedAt: '2026-01-01T00:00:00Z', logs: [] })).ok).toBe(false);
+    expect(parseImport(JSON.stringify({ schemaVersion: 1.5, exportedAt: '2026-01-01T00:00:00Z', logs: [] })).ok).toBe(false);
+  });
+
+  test('rejects non-object input and non-array logs', () => {
+    expect(validateExport(42)[0]).toMatch(/not an object/);
+    expect(
+      validateExport({ schemaVersion: 1, exportedAt: '2026-01-01T00:00:00Z', logs: 'nope' }).some((e) =>
+        e.includes('logs must be an array'),
+      ),
+    ).toBe(true);
+  });
+
+  test('validates nested DRSP / pain records and reports the bad index', () => {
+    const errors = validateExport({
+      schemaVersion: 1,
+      exportedAt: '2026-01-01T00:00:00Z',
+      logs: [],
+      drspEntries: [{ date: '2026-01-01', scores: Array(10).fill(3) }, { date: '2026-01-02', scores: [1, 2] }],
+      painEvents: [{ id: '', date: 'bad', locations: [], intensity: 99, durationMin: 1, medications: [] }],
+    });
+    expect(errors.some((e) => e.includes('drspEntries[1]'))).toBe(true);
+    expect(errors.some((e) => e.includes('painEvents[0]'))).toBe(true);
+  });
 });

@@ -42,6 +42,27 @@ describe('localWallClockToUtc', () => {
     expect(winter.getUTCHours()).toBe(20);
   });
 
+  test('spring-forward: a valid wall time lands on the correct UTC instant', () => {
+    // US DST begins 2026-03-08 02:00→03:00 (EST→EDT). 03:00 EDT exists → 07:00Z.
+    const t = localWallClockToUtc('2026-03-08', 3, 0, 'America/New_York');
+    expect(t.getUTCHours()).toBe(7);
+    expect(localDayISO(t, 'America/New_York')).toBe('2026-03-08');
+  });
+
+  test('spring-forward: a NONEXISTENT wall time resolves forward without throwing', () => {
+    // EU DST begins 2026-03-29 02:00→03:00; 02:30 does not exist. Resolves to 01:30Z.
+    const t = localWallClockToUtc('2026-03-29', 2, 30, 'Europe/Brussels');
+    expect(t.getUTCHours()).toBe(1);
+    expect(t.getUTCMinutes()).toBe(30);
+  });
+
+  test('fall-back: an AMBIGUOUS wall time resolves to the standard-time instant', () => {
+    // EU DST ends 2026-10-25 03:00→02:00; 02:30 occurs twice. We pick CET (standard).
+    const t = localWallClockToUtc('2026-10-25', 2, 30, 'Europe/Brussels');
+    expect(t.getUTCHours()).toBe(1);
+    expect(t.getUTCMinutes()).toBe(30);
+  });
+
   test('resolves a wall time in a far-east zone', () => {
     // Tokyo is UTC+9 year-round: 09:00 local → 00:00Z same day
     const t = localWallClockToUtc('2026-07-01', 9, 0, 'Asia/Tokyo');
