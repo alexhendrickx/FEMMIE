@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -12,40 +12,43 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { OnboardingScreen, ReconnectBanner } from './src/components/Onboarding';
 import { CycleSummary } from './src/components/CycleRing';
-import { DailyLogSheet } from './src/components/DailyLog/DailyLogSheet';
+import { DailyFlow } from './src/components/DailyFlow';
 import { YouSheet } from './src/components/You';
 import { useLogStore } from './src/store/logStore';
 import { colors } from './src/theme/colors';
-import type { DayData } from './src/types/calendar';
-
-// ── Demo data ────────────────────────────────────────────────────────────────
-const TODAY = new Date().toISOString().slice(0, 10);
-const y = new Date().getFullYear();
-const m = String(new Date().getMonth() + 1).padStart(2, '0');
-
-const DEMO_DAYS: DayData[] = [
-  { date: `${y}-${m}-01`, state: 'confirmed' },
-  { date: `${y}-${m}-02`, state: 'confirmed' },
-  { date: `${y}-${m}-03`, state: 'confirmed' },
-  { date: `${y}-${m}-04`, state: 'confirmed' },
-  { date: `${y}-${m}-05`, state: 'confirmed' },
-  { date: `${y}-${m}-14`, state: 'fertile' },
-  { date: `${y}-${m}-15`, state: 'fertile' },
-  { date: `${y}-${m}-16`, state: 'fertile' },
-  { date: `${y}-${m}-28`, state: 'predicted' },
-  { date: `${y}-${m}-29`, state: 'predicted' },
-  { date: `${y}-${m}-30`, state: 'predicted' },
-];
-
-const SUGGESTED_IDS = ['menstrual_flow', 'cramps', 'fatigue', 'mood', 'sleep_quality'];
+import {
+  extractPeriodStarts,
+  currentCycleDay,
+  averageCycleLength,
+  cyclePhase,
+} from './src/lib/cycle';
+import { buildCalendarDays } from './src/lib/calendar';
+import { todayISO } from './src/components/CycleCalendar/utils';
 
 // ── Main app (shown after auth) ───────────────────────────────────────────────
 function MainApp() {
   const { isOffline } = useAuth();
   const [youOpen, setYouOpen] = useState(false);
-  const [logOpen, setLogOpen] = useState(false);
-  const { hasLoggedToday } = useLogStore();
+  const [flowOpen, setFlowOpen] = useState(false);
+  const logs = useLogStore((s) => s.logs);
+  const hasLoggedToday = useLogStore((s) => s.hasLoggedToday);
   const alreadyLogged = hasLoggedToday();
+
+  // Everything the Today screen + flow needs, derived from the real store.
+  const today = todayISO();
+  const derived = useMemo(() => {
+    const logList = Object.values(logs);
+    const starts = extractPeriodStarts(logList);
+    const cycleDay = currentCycleDay(starts, today);
+    const avg = averageCycleLength(starts);
+    const phase = cycleDay !== null ? cyclePhase(cycleDay, avg) : null;
+    const isLikelyPeriod = phase === 'period';
+    return {
+      cycleDay,
+      isLikelyPeriod,
+      calendarDays: buildCalendarDays(logList, today),
+    };
+  }, [logs, today]);
 
   return (
     <>
@@ -64,36 +67,36 @@ function MainApp() {
             </TouchableOpacity>
           </View>
 
-          <CycleSummary onPressRing={() => setLogOpen(true)} />
+          <CycleSummary onPressRing={() => setFlowOpen(true)} />
 
           <TouchableOpacity
             style={styles.fab}
-            onPress={() => setLogOpen(true)}
+            onPress={() => setFlowOpen(true)}
             accessibilityRole="button"
-            accessibilityLabel={alreadyLogged ? 'Edit today' : 'Start today'}
+            accessibilityLabel={alreadyLogged ? 'Update today' : 'Start today'}
           >
             <Text style={styles.fabText}>
-              {alreadyLogged ? '✏️  Edit today' : '＋  Start today'}
+              {alreadyLogged ? '✓  Logged — update' : '＋  Start today'}
             </Text>
           </TouchableOpacity>
         </View>
 
-        <DailyLogSheet
-          visible={logOpen}
-          date={TODAY}
-          cycleDay={4}
-          suggestedCategoryIds={SUGGESTED_IDS}
-          onClose={() => setLogOpen(false)}
-          onSaved={() => setLogOpen(false)}
+        <DailyFlow
+          visible={flowOpen}
+          date={today}
+          cycleDay={derived.cycleDay}
+          isLikelyPeriod={derived.isLikelyPeriod}
+          onClose={() => setFlowOpen(false)}
+          onSaved={() => setFlowOpen(false)}
         />
 
         <YouSheet
           visible={youOpen}
           onClose={() => setYouOpen(false)}
-          calendarDays={DEMO_DAYS}
+          calendarDays={derived.calendarDays}
           onCalendarDayLog={() => {
             setYouOpen(false);
-            setLogOpen(true);
+            setFlowOpen(true);
           }}
         />
       </SafeAreaView>
