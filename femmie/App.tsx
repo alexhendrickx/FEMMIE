@@ -108,6 +108,20 @@ function MainApp() {
 function AppGate() {
   const { isAuthenticated, isLoading } = useAuth();
   const [onboardingDone, setOnboardingDone] = useState(false);
+  const saveLog = useLogStore((s) => s.saveLog);
+
+  // Seed the first period start the user picked in onboarding, so predictions and the
+  // calendar are alive from day one (UX decision #16) instead of an empty ring.
+  const finishOnboarding = (firstCycleDate: string | null) => {
+    if (firstCycleDate) {
+      saveLog({
+        date: firstCycleDate,
+        cycleDay: 1,
+        entries: [{ categoryId: 'menstrual_flow', value: 'medium' }],
+      });
+    }
+    setOnboardingDone(true);
+  };
 
   if (isLoading) {
     return <View style={styles.splash} />;
@@ -116,7 +130,7 @@ function AppGate() {
   if (!isAuthenticated || !onboardingDone) {
     return (
       <SafeAreaView style={styles.safe}>
-        <OnboardingScreen onComplete={() => setOnboardingDone(true)} />
+        <OnboardingScreen onComplete={finishOnboarding} />
       </SafeAreaView>
     );
   }
