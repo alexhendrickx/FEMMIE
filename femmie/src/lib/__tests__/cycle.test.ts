@@ -16,6 +16,7 @@ import {
   currentCycleDay,
   cyclePhase,
   predictNextPeriod,
+  predictFromCycleLength,
   cyclePositionFor,
   averageCycleLength,
 } from '../cycle';
@@ -120,6 +121,17 @@ test("cyclePhase maps day 1-5 to 'period' and the ovulation window to 'fertile'"
   expect(cyclePhase(1, avgLength)).toBe('period');
   expect(cyclePhase(5, avgLength)).toBe('period');
   expect(cyclePhase(14, avgLength)).toBe('fertile');
+});
+
+describe('predictFromCycleLength', () => {
+  test('projects the next period one stated cycle-length ahead, low confidence', () => {
+    const p = predictFromCycleLength('2026-01-01', 30, '2026-01-10');
+    expect(p.mostLikely).toBe('2026-01-31'); // +30 days
+    expect(p.windowStart).toBe('2026-01-29');
+    expect(p.windowEnd).toBe('2026-02-02');
+    expect(p.confidence).toBe('low');
+    expect(p.basis).toContain('30-day');
+  });
 });
 
 describe('averageCycleLength', () => {

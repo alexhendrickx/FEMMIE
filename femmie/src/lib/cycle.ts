@@ -130,6 +130,26 @@ export function averageCycleLength(starts: string[]): number {
   return lengths.reduce((a, b) => a + b, 0) / lengths.length;
 }
 
+/**
+ * Day-one prediction from the user's STATED cycle length (onboarding decision #16),
+ * used to bootstrap the ring before enough history exists for a statistical prediction.
+ * Honestly flagged low confidence.
+ */
+export function predictFromCycleLength(
+  lastStart: string,
+  cycleLength: number,
+  _todayISO: string,
+): Prediction {
+  const mostLikely = addDays(lastStart, Math.round(cycleLength));
+  return {
+    confidence: 'low',
+    mostLikely,
+    windowStart: addDays(mostLikely, -2),
+    windowEnd: addDays(mostLikely, 2),
+    basis: `Based on your ${Math.round(cycleLength)}-day cycle`,
+  };
+}
+
 export function predictNextPeriod(starts: string[], todayISO: string): Prediction {
   const lengths = cycleLengths(starts);
 

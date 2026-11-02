@@ -13,6 +13,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { OnboardingScreen, ReconnectBanner } from './src/components/Onboarding';
 import { CycleSummary } from './src/components/CycleRing';
 import { DailyFlow } from './src/components/DailyFlow';
+import { DailyLogSheet } from './src/components/DailyLog/DailyLogSheet';
 import { YouSheet } from './src/components/You';
 import { useLogStore } from './src/store/logStore';
 import { colors } from './src/theme/colors';
@@ -30,6 +31,7 @@ function MainApp() {
   const { isOffline } = useAuth();
   const [youOpen, setYouOpen] = useState(false);
   const [flowOpen, setFlowOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const logs = useLogStore((s) => s.logs);
   const hasLoggedToday = useLogStore((s) => s.hasLoggedToday);
   const alreadyLogged = hasLoggedToday();
@@ -69,16 +71,26 @@ function MainApp() {
 
           <CycleSummary onPressRing={() => setFlowOpen(true)} />
 
-          <TouchableOpacity
-            style={styles.fab}
-            onPress={() => setFlowOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel={alreadyLogged ? 'Update today' : 'Start today'}
-          >
-            <Text style={styles.fabText}>
-              {alreadyLogged ? '✓  Logged — update' : '＋  Start today'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.bottomBar}>
+            <TouchableOpacity
+              style={styles.fab}
+              onPress={() => setFlowOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={alreadyLogged ? 'Update today' : 'Start today'}
+            >
+              <Text style={styles.fabText}>
+                {alreadyLogged ? '✓  Logged — update' : '＋  Start today'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.detailLink}
+              onPress={() => setDetailOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Log in detail"
+            >
+              <Text style={styles.detailLinkText}>Log in detail</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <DailyFlow
@@ -88,6 +100,14 @@ function MainApp() {
           isLikelyPeriod={derived.isLikelyPeriod}
           onClose={() => setFlowOpen(false)}
           onSaved={() => setFlowOpen(false)}
+        />
+
+        <DailyLogSheet
+          visible={detailOpen}
+          date={today}
+          cycleDay={derived.cycleDay ?? 1}
+          onClose={() => setDetailOpen(false)}
+          onSaved={() => setDetailOpen(false)}
         />
 
         <YouSheet
@@ -109,10 +129,12 @@ function AppGate() {
   const { isAuthenticated, isLoading } = useAuth();
   const [onboardingDone, setOnboardingDone] = useState(false);
   const saveLog = useLogStore((s) => s.saveLog);
+  const setCycleLengthPref = useLogStore((s) => s.setCycleLengthPref);
 
-  // Seed the first period start the user picked in onboarding, so predictions and the
-  // calendar are alive from day one (UX decision #16) instead of an empty ring.
-  const finishOnboarding = (firstCycleDate: string | null) => {
+  // Store the stated cycle length and seed the first period start, so predictions and
+  // the calendar are alive from day one (UX decision #16) instead of an empty ring.
+  const finishOnboarding = (firstCycleDate: string | null, cycleLength: number) => {
+    setCycleLengthPref(cycleLength);
     if (firstCycleDate) {
       saveLog({
         date: firstCycleDate,
@@ -185,11 +207,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: { fontSize: 18 },
-  fab: {
+  bottomBar: {
     position: 'absolute',
     bottom: 16,
     left: 20,
     right: 20,
+    gap: 4,
+  },
+  fab: {
     backgroundColor: colors.periodConfirmed,
     borderRadius: 16,
     paddingVertical: 17,
@@ -204,5 +229,14 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     fontSize: 16,
     fontWeight: '700',
+  },
+  detailLink: {
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  detailLinkText: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

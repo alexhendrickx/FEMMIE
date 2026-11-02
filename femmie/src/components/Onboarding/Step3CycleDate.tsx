@@ -12,10 +12,10 @@ import {
 import type { MonthRef } from '../../types/calendar';
 
 interface Props {
-  onComplete: (firstCycleDate: string | null) => void;
+  onNext: (firstCycleDate: string | null) => void;
 }
 
-export function Step3CycleDate({ onComplete }: Props) {
+export function Step3CycleDate({ onNext }: Props) {
   const now = new Date();
   const currentRef: MonthRef = { year: now.getFullYear(), month: now.getMonth() };
   const today = todayISO();
@@ -108,15 +108,15 @@ export function Step3CycleDate({ onComplete }: Props) {
         <TouchableOpacity
           style={[styles.btn, !selected && styles.btnDisabled]}
           disabled={!selected}
-          onPress={() => selected && onComplete(selected)}
+          onPress={() => selected && onNext(selected)}
           accessibilityRole="button"
         >
-          <Text style={styles.btnText}>Start tracking →</Text>
+          <Text style={styles.btnText}>Next →</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.skipBtn}
-          onPress={() => onComplete(null)}
+          onPress={() => onNext(null)}
           accessibilityRole="button"
         >
           <Text style={styles.skipText}>Skip for now</Text>

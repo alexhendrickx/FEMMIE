@@ -4,21 +4,23 @@ import { colors } from '../../theme/colors';
 import { Step1Privacy } from './Step1Privacy';
 import { Step2Passkey } from './Step2Passkey';
 import { Step3CycleDate } from './Step3CycleDate';
+import { Step4CycleLength } from './Step4CycleLength';
 
 interface Props {
-  onComplete: (firstCycleDate: string | null) => void;
+  onComplete: (firstCycleDate: string | null, cycleLength: number) => void;
 }
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 
 export function OnboardingScreen({ onComplete }: Props) {
   const [step, setStep] = useState<Step>(1);
+  const [firstDate, setFirstDate] = useState<string | null>(null);
 
   return (
     <View style={styles.container}>
       {/* Progress dots */}
       <View style={styles.dots}>
-        {([1, 2, 3] as Step[]).map((s) => (
+        {([1, 2, 3, 4] as Step[]).map((s) => (
           <View
             key={s}
             style={[styles.dot, step >= s && styles.dotActive]}
@@ -28,7 +30,17 @@ export function OnboardingScreen({ onComplete }: Props) {
 
       {step === 1 && <Step1Privacy onNext={() => setStep(2)} />}
       {step === 2 && <Step2Passkey onNext={() => setStep(3)} />}
-      {step === 3 && <Step3CycleDate onComplete={onComplete} />}
+      {step === 3 && (
+        <Step3CycleDate
+          onNext={(date) => {
+            setFirstDate(date);
+            setStep(4);
+          }}
+        />
+      )}
+      {step === 4 && (
+        <Step4CycleLength onDone={(cycleLength) => onComplete(firstDate, cycleLength)} />
+      )}
     </View>
   );
 }

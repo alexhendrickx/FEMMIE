@@ -50,11 +50,14 @@ interface LogState {
   shortcuts: ShortcutCombo[];
   reminderEnabled: boolean;
   reminderTime: { hour: number; minute: number };
+  /** User-stated typical cycle length (onboarding) — powers day-one prediction. */
+  cycleLengthPref: number;
 
   saveLog: (log: Omit<DailyLog, 'savedAt'>) => void;
   getLog: (date: string) => DailyLog | undefined;
   hasLoggedToday: () => boolean;
   setReminder: (enabled: boolean, time?: { hour: number; minute: number }) => void;
+  setCycleLengthPref: (days: number) => void;
 }
 
 export const useLogStore = create<LogState>()(
@@ -64,6 +67,7 @@ export const useLogStore = create<LogState>()(
       shortcuts: [],
       reminderEnabled: false,
       reminderTime: { hour: 21, minute: 30 },
+      cycleLengthPref: 28,
 
       saveLog(log) {
         const savedAt = new Date().toISOString();
@@ -88,6 +92,10 @@ export const useLogStore = create<LogState>()(
           reminderEnabled: enabled,
           reminderTime: time ?? state.reminderTime,
         }));
+      },
+
+      setCycleLengthPref(days) {
+        set({ cycleLengthPref: days });
       },
     }),
     {

@@ -11,6 +11,7 @@ import {
   daysBetween,
   extractPeriodStarts,
   predictNextPeriod,
+  predictFromCycleLength,
 } from '../../lib/cycle';
 
 const DEFAULT_AVG_LENGTH = 28;
@@ -21,6 +22,7 @@ interface CycleSummaryProps {
 
 export function CycleSummary({ onPressRing }: CycleSummaryProps) {
   const logs = useLogStore((s) => s.logs);
+  const cycleLengthPref = useLogStore((s) => s.cycleLengthPref);
 
   const derived = useMemo(() => {
     const logList = Object.values(logs);
@@ -32,10 +34,17 @@ export function CycleSummary({ onPressRing }: CycleSummaryProps) {
     const avgLength =
       lengths.length > 0
         ? lengths.reduce((a, b) => a + b, 0) / lengths.length
-        : DEFAULT_AVG_LENGTH;
+        : cycleLengthPref || DEFAULT_AVG_LENGTH;
     const phase = cycleDay !== null ? cyclePhase(cycleDay, avgLength) : null;
     const progress = cycleDay !== null ? cycleDay / avgLength : 0;
-    const prediction = predictNextPeriod(starts, today);
+
+    // Statistical prediction once there's enough history; otherwise bootstrap from
+    // the user's stated cycle length so the ring shows a countdown from day one.
+    const stat = predictNextPeriod(starts, today);
+    const prediction =
+      stat.mostLikely === undefined && starts.length > 0
+        ? predictFromCycleLength(starts[starts.length - 1], cycleLengthPref || DEFAULT_AVG_LENGTH, today)
+        : stat;
     const daysUntil =
       prediction.mostLikely !== undefined
         ? daysBetween(today, prediction.mostLikely)
@@ -53,7 +62,7 @@ export function CycleSummary({ onPressRing }: CycleSummaryProps) {
     }
 
     return { cycleDay, phase, progress, state, prediction, daysUntil };
-  }, [logs]);
+  }, [logs, cycleLengthPref]);
 
   return (
     <View style={styles.container}>
