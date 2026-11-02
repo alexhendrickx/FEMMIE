@@ -16,6 +16,8 @@ import {
   currentCycleDay,
   cyclePhase,
   predictNextPeriod,
+  cyclePositionFor,
+  averageCycleLength,
 } from '../cycle';
 import type { DailyLog } from '../../types/logging';
 
@@ -118,4 +120,51 @@ test("cyclePhase maps day 1-5 to 'period' and the ovulation window to 'fertile'"
   expect(cyclePhase(1, avgLength)).toBe('period');
   expect(cyclePhase(5, avgLength)).toBe('period');
   expect(cyclePhase(14, avgLength)).toBe('fertile');
+});
+
+describe('averageCycleLength', () => {
+  test('falls back to 28 with too little history', () => {
+    expect(averageCycleLength([])).toBe(28);
+    expect(averageCycleLength(['2026-01-01'])).toBe(28);
+  });
+  test('averages the gaps between starts', () => {
+    // gaps: 28 then 30 → mean 29
+    expect(averageCycleLength(['2026-01-01', '2026-01-29', '2026-02-28'])).toBe(29);
+  });
+});
+
+describe('cyclePositionFor', () => {
+  const starts = ['2026-01-01', '2026-01-29', '2026-02-26']; // 28-day cycles
+
+  test('returns null with no starts or for dates before the first start', () => {
+    expect(cyclePositionFor([], '2026-01-10', 28)).toBeNull();
+    expect(cyclePositionFor(starts, '2025-12-20', 28)).toBeNull();
+  });
+
+  test('a start date is cycleDay 1 in the period phase', () => {
+    expect(cyclePositionFor(starts, '2026-01-29', 28)).toEqual({
+      cycleId: '2026-01-29',
+      cycleDay: 1,
+      phase: 'period',
+    });
+  });
+
+  test('the day before the next start is the last day of the current cycle', () => {
+    const pos = cyclePositionFor(starts, '2026-01-28', 28)!; // day before 2nd start
+    expect(pos.cycleId).toBe('2026-01-01');
+    expect(pos.cycleDay).toBe(28);
+    expect(pos.phase).toBe('luteal');
+  });
+
+  test('uses the completed cycle actual length for phase boundaries', () => {
+    // A short 24-day cycle: ovulation window shifts earlier than the 28-day default.
+    const shortStarts = ['2026-01-01', '2026-01-25']; // 24-day completed cycle
+    // day 12 in a 24-day cycle: ovulationDay = 24-14 = 10, fertile window 8–12
+    expect(cyclePositionFor(shortStarts, '2026-01-12', 28)!.phase).toBe('fertile');
+  });
+
+  test('returns null for an implausibly long OPEN cycle (untracked gap)', () => {
+    // 100 days after the only start, no later start → phase unknowable, not "luteal".
+    expect(cyclePositionFor(['2026-01-01'], '2026-04-11', 28)).toBeNull();
+  });
 });
