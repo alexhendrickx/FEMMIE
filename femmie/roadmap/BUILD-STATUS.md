@@ -9,9 +9,9 @@ aspirational `roadmap/README.md`.
 ## Green gate (verified this session)
 
 - `cd femmie && npx tsc --noEmit` → clean (TypeScript strict).
-- `cd femmie && npx jest` → **76 passing** across 8 suites (was 22 at session start).
-- `backend/` has source but **no `package.json`** — it cannot be type-checked, tested, or
-  run yet. (First backend task: add `package.json` + `tsconfig` so it enters the gate.)
+- `cd femmie && npx jest` → **105 passing** across 12 suites (was 22 at session start).
+- `backend/` has source but **no `package.json`** — see the backend note below; wiring it
+  into the gate is not a quick config add.
 
 ## Phase 2 — Personal Intelligence: logic core built on-device ✅
 
@@ -28,12 +28,25 @@ runs **on-device** against decrypted logs (CLAUDE.md rule 3).
 | **F2-12** cycle recap | `src/lib/recap.ts` | `generateRecap()`: length vs 6-cycle avg, top-3 symptoms, correlation noticings; null below 2 completed cycles. | Push delivery (morning after period) + recap history persistence + RecapCard UI. |
 | **F2-08** today's outlook | `src/lib/outlook.ts` | `todayOutlook()`: same-cycle-day (±2d) energy/sleep/mood/pain patterns across ≥3 cycles, non-prescriptive suggestion, neutral placeholder otherwise. | TodayOutlookCard UI + "mute phase content" setting. |
 
-Each shipped on its own branch (`feat/f2-07-…` → `feat/f2-08-…`, stacked), green before
-commit. Both senior/privacy review rounds are **complete**: round 1 caught a real bug
-(lifestyle signals like sleep hours were being counted as "symptoms"); round 2 caught an
-overclaim (patterns now read "in 3 of 12 cycles" with a majority gate) and a non-English
-notes bug. All blocking findings resolved. The tip branch `feat/f2-08-today-outlook`
-contains the whole stack.
+Reviewed in two senior/privacy rounds: round 1 caught a real bug (lifestyle signals like
+sleep hours were being counted as "symptoms"); round 2 caught an overclaim (patterns now
+read "in 3 of 12 cycles" with a majority gate) and a non-English notes bug. All blocking
+findings resolved.
+
+## More on-device logic built ✅ (second batch)
+
+| Feature | Module | What's done | What's left (not cloud-buildable) |
+|---|---|---|---|
+| **F2-10** mood / DRSP | `src/lib/mood.ts`, `src/types/mood.ts` | 10-item DRSP validation + scoring, per-cycle severity, PMDD-aware safeguard (≥4 avg across ≥3 cycles, permanent dismiss). No gamification. | Opt-in DRSP UI + encrypted store + clinician PDF. |
+| **F2-11** pain | `src/lib/pain.ts`, `src/types/pain.ts` | PainEvent model (named body regions), top locations, avg intensity by phase, medication effectiveness, export summary. | Interactive SVG body map + logging form + PDF. |
+| **F3-20** timezone/travel | `src/lib/timezone.ts` | `localDayISO`, `localWallClockToUtc` (DST-correct), `localDaysBetween` — travel-safe day + reminder math. | Hook reminders/logging into device tz changes. |
+| **F5-32** data portability | `src/lib/portability.ts`, `src/types/portability.ts` | Versioned export/import, round-trip, validation (rejects bad JSON / newer schema / malformed), custom tags survive. | Encrypt the export file + file picker/share UI. |
+
+Every feature shipped on its own stacked branch, green + committed. **Tip branch:
+`feat/f5-32-data-portability` contains the entire stack** (F2-07 → … → F5-32).
+
+**⚠️ No git remote exists** — these commits live only in the cloud container until you add
+an `origin` (or open a PR from the web UI). Preserve them before the container is reclaimed.
 
 ## What CANNOT be finished in a cloud session (needs you)
 
