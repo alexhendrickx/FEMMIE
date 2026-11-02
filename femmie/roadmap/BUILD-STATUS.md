@@ -9,7 +9,7 @@ aspirational `roadmap/README.md`.
 ## Green gate (verified this session)
 
 - `cd femmie && npx tsc --noEmit` → clean (TypeScript strict).
-- `cd femmie && npx jest` → **69 passing** across 8 suites.
+- `cd femmie && npx jest` → **76 passing** across 8 suites (was 22 at session start).
 - `backend/` has source but **no `package.json`** — it cannot be type-checked, tested, or
   run yet. (First backend task: add `package.json` + `tsconfig` so it enters the gate.)
 
@@ -28,8 +28,12 @@ runs **on-device** against decrypted logs (CLAUDE.md rule 3).
 | **F2-12** cycle recap | `src/lib/recap.ts` | `generateRecap()`: length vs 6-cycle avg, top-3 symptoms, correlation noticings; null below 2 completed cycles. | Push delivery (morning after period) + recap history persistence + RecapCard UI. |
 | **F2-08** today's outlook | `src/lib/outlook.ts` | `todayOutlook()`: same-cycle-day (±2d) energy/sleep/mood/pain patterns across ≥3 cycles, non-prescriptive suggestion, neutral placeholder otherwise. | TodayOutlookCard UI + "mute phase content" setting. |
 
-Each shipped on its own branch (`feat/f2-07-…` → `feat/f2-08-…`, stacked), reviewed by the
-senior/privacy reviewer, green before commit.
+Each shipped on its own branch (`feat/f2-07-…` → `feat/f2-08-…`, stacked), green before
+commit. Both senior/privacy review rounds are **complete**: round 1 caught a real bug
+(lifestyle signals like sleep hours were being counted as "symptoms"); round 2 caught an
+overclaim (patterns now read "in 3 of 12 cycles" with a majority gate) and a non-English
+notes bug. All blocking findings resolved. The tip branch `feat/f2-08-today-outlook`
+contains the whole stack.
 
 ## What CANNOT be finished in a cloud session (needs you)
 
