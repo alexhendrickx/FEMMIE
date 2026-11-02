@@ -5,18 +5,15 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Platform,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { OnboardingScreen, ReconnectBanner } from './src/components/Onboarding';
-import { CycleCalendar } from './src/components/CycleCalendar';
 import { CycleSummary } from './src/components/CycleRing';
 import { DailyLogSheet } from './src/components/DailyLog/DailyLogSheet';
-import { HealthIntegrationScreen } from './src/components/HealthIntegration/HealthIntegrationScreen';
-import { PrivacyScreen } from './src/components/PrivacyScreen';
+import { YouSheet } from './src/components/You';
 import { useLogStore } from './src/store/logStore';
 import { colors } from './src/theme/colors';
 import type { DayData } from './src/types/calendar';
@@ -42,19 +39,10 @@ const DEMO_DAYS: DayData[] = [
 
 const SUGGESTED_IDS = ['menstrual_flow', 'cramps', 'fatigue', 'mood', 'sleep_quality'];
 
-// ── Tab types ────────────────────────────────────────────────────────────────
-type Tab = 'home' | 'health' | 'privacy';
-
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'home',    label: 'Home',    icon: '🌙' },
-  { id: 'health',  label: 'Health',  icon: '❤️' },
-  { id: 'privacy', label: 'Privacy', icon: '🔒' },
-];
-
 // ── Main app (shown after auth) ───────────────────────────────────────────────
 function MainApp() {
   const { isOffline } = useAuth();
-  const [tab, setTab] = useState<Tab>('home');
+  const [youOpen, setYouOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const { hasLoggedToday } = useLogStore();
   const alreadyLogged = hasLoggedToday();
@@ -63,47 +51,33 @@ function MainApp() {
     <>
       <ReconnectBanner visible={isOffline} />
       <SafeAreaView style={styles.safe}>
-
-        {/* ── Screens ── */}
-        {tab === 'home' && (
-          <View style={styles.screen}>
-            <CycleSummary onPressRing={() => setLogOpen(true)} />
-            <CycleCalendar days={DEMO_DAYS} onDayLog={() => setLogOpen(true)} />
+        <View style={styles.screen}>
+          <View style={styles.topBar}>
+            <View style={styles.topBarSpacer} />
             <TouchableOpacity
-              style={styles.fab}
-              onPress={() => setLogOpen(true)}
+              style={styles.avatarButton}
+              onPress={() => setYouOpen(true)}
               accessibilityRole="button"
-              accessibilityLabel={alreadyLogged ? 'Edit today' : 'Log today'}
+              accessibilityLabel="Open profile"
             >
-              <Text style={styles.fabText}>
-                {alreadyLogged ? '✏️  Edit today' : '＋  Log today'}
-              </Text>
+              <Text style={styles.avatarText}>🌙</Text>
             </TouchableOpacity>
           </View>
-        )}
-        {tab === 'health'  && <HealthIntegrationScreen />}
-        {tab === 'privacy' && <PrivacyScreen />}
 
-        {/* ── Bottom tab bar ── */}
-        <View style={styles.tabBar}>
-          {TABS.map((t) => (
-            <TouchableOpacity
-              key={t.id}
-              style={styles.tabItem}
-              onPress={() => setTab(t.id)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: tab === t.id }}
-            >
-              <Text style={styles.tabIcon}>{t.icon}</Text>
-              <Text style={[styles.tabLabel, tab === t.id && styles.tabLabelActive]}>
-                {t.label}
-              </Text>
-              {tab === t.id && <View style={styles.tabDot} />}
-            </TouchableOpacity>
-          ))}
+          <CycleSummary onPressRing={() => setLogOpen(true)} />
+
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={() => setLogOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={alreadyLogged ? 'Edit today' : 'Start today'}
+          >
+            <Text style={styles.fabText}>
+              {alreadyLogged ? '✏️  Edit today' : '＋  Start today'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* ── Daily log sheet ── */}
         <DailyLogSheet
           visible={logOpen}
           date={TODAY}
@@ -111,6 +85,16 @@ function MainApp() {
           suggestedCategoryIds={SUGGESTED_IDS}
           onClose={() => setLogOpen(false)}
           onSaved={() => setLogOpen(false)}
+        />
+
+        <YouSheet
+          visible={youOpen}
+          onClose={() => setYouOpen(false)}
+          calendarDays={DEMO_DAYS}
+          onCalendarDayLog={() => {
+            setYouOpen(false);
+            setLogOpen(true);
+          }}
         />
       </SafeAreaView>
     </>
@@ -166,6 +150,24 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  topBarSpacer: { flex: 1 },
+  avatarButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: { fontSize: 18 },
   fab: {
     position: 'absolute',
     bottom: 16,
@@ -185,37 +187,5 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     fontSize: 16,
     fontWeight: '700',
-  },
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
-    paddingTop: 8,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 2,
-  },
-  tabIcon: {
-    fontSize: 22,
-  },
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.textMuted,
-  },
-  tabLabelActive: {
-    color: colors.periodConfirmed,
-    fontWeight: '700',
-  },
-  tabDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.periodConfirmed,
-    marginTop: 2,
   },
 });
