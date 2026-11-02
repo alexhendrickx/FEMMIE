@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -8,6 +8,8 @@ import {
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
+import * as Notifications from 'expo-notifications';
+import { scheduleBedtimeReminder } from './src/utils/notifications';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { OnboardingScreen, ReconnectBanner } from './src/components/Onboarding';
@@ -35,6 +37,18 @@ function MainApp() {
   const logs = useLogStore((s) => s.logs);
   const hasLoggedToday = useLogStore((s) => s.hasLoggedToday);
   const alreadyLogged = hasLoggedToday();
+  const reminderEnabled = useLogStore((s) => s.reminderEnabled);
+  const reminderTime = useLogStore((s) => s.reminderTime);
+
+  // Keep the daily reminder scheduled, and open the flow straight away when the user
+  // taps the notification (UX decision #11).
+  useEffect(() => {
+    if (reminderEnabled) {
+      void scheduleBedtimeReminder(reminderTime.hour, reminderTime.minute);
+    }
+    const sub = Notifications.addNotificationResponseReceivedListener(() => setFlowOpen(true));
+    return () => sub.remove();
+  }, [reminderEnabled, reminderTime.hour, reminderTime.minute]);
 
   // Everything the Today screen + flow needs, derived from the real store.
   const today = todayISO();

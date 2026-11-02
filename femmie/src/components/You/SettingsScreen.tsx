@@ -1,10 +1,23 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { useLogStore } from '../../store/logStore';
+import { scheduleBedtimeReminder, cancelBedtimeReminder } from '../../utils/notifications';
 import { colors } from '../../theme/colors';
 
 export function SettingsScreen() {
   const { hasPasskey, isOffline, logout } = useAuth();
+  const reminderEnabled = useLogStore((s) => s.reminderEnabled);
+  const reminderTime = useLogStore((s) => s.reminderTime);
+  const setReminder = useLogStore((s) => s.setReminder);
+
+  const timeLabel = `${String(reminderTime.hour).padStart(2, '0')}:${String(reminderTime.minute).padStart(2, '0')}`;
+
+  const toggleReminder = async (value: boolean) => {
+    setReminder(value);
+    if (value) await scheduleBedtimeReminder(reminderTime.hour, reminderTime.minute);
+    else await cancelBedtimeReminder();
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -18,9 +31,17 @@ export function SettingsScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Notifications</Text>
-        <View style={[styles.row, styles.rowDisabled]}>
-          <Text style={styles.rowLabel}>Reminders</Text>
-          <Text style={styles.comingSoon}>Coming soon</Text>
+        <View style={styles.row}>
+          <View style={styles.rowTextWrap}>
+            <Text style={styles.rowLabel}>Daily reminder</Text>
+            <Text style={styles.hint}>A gentle nudge every day at {timeLabel}</Text>
+          </View>
+          <Switch
+            value={reminderEnabled}
+            onValueChange={(v) => void toggleReminder(v)}
+            trackColor={{ false: colors.border, true: colors.periodConfirmed }}
+            accessibilityLabel="Daily reminder"
+          />
         </View>
       </View>
 
@@ -59,9 +80,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  rowDisabled: { opacity: 0.5 },
+  rowTextWrap: { flex: 1, paddingRight: 12, gap: 2 },
   rowLabel: { fontSize: 15, color: colors.text },
-  comingSoon: { fontSize: 13, color: colors.textMuted },
   logoutButton: {
     backgroundColor: colors.surface,
     borderRadius: 12,
