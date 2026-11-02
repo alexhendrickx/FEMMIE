@@ -93,6 +93,42 @@ test('counts the top symptoms within the recapped cycle only', () => {
   expect(cramps.symptomName).toBe('Cramps');
 });
 
+test('is non-null at exactly 2 completed cycles (3 starts) — the gate boundary', () => {
+  const logs = buildCycles({ cycleLengths: [28, 28], periodLen: 4 }); // starts at 0,28,56
+  const recap = generateRecap(logs)!;
+  expect(recap).not.toBeNull();
+  expect(recap.cycleId).toBe(isoAt(28)); // recaps the 2nd cycle (most recent completed)
+  expect(recap.cycleLength).toBe(28);
+});
+
+test('period length stops at a gap longer than the intra-period limit', () => {
+  const logs = [
+    // cycle 0 (normal)
+    ...[0, 1, 2, 3].map((d) => makeLog(isoAt(d), [{ categoryId: 'menstrual_flow', value: 'medium' as const }])),
+    // cycle 1 (the one that gets recapped): flow on 28,29,30 then a 4-day gap to 34
+    ...[28, 29, 30, 34].map((d) => makeLog(isoAt(d), [{ categoryId: 'menstrual_flow', value: 'medium' as const }])),
+    // cycle 2 (open)
+    ...[56, 57].map((d) => makeLog(isoAt(d), [{ categoryId: 'menstrual_flow', value: 'medium' as const }])),
+  ];
+  const recap = generateRecap(logs)!;
+  expect(recap.cycleId).toBe(isoAt(28));
+  expect(recap.periodLength).toBe(3); // 28,29,30 — the day-34 flow is past the gap
+});
+
+test('resolves custom-tag names via options.labels', () => {
+  const logs = buildCycles({
+    cycleLengths: [28, 28],
+    periodLen: 4,
+    symptoms: [
+      { dayOffsetInCycle: 10, cycleIndexes: [1], entry: { categoryId: 'tag_x', value: true } },
+    ],
+  });
+  const recap = generateRecap(logs, {}, { labels: { tag_x: 'My Thing' } })!;
+  const tag = recap.topSymptoms.find((s) => s.symptomId === 'tag_x');
+  expect(tag).toBeDefined();
+  expect(tag!.symptomName).toBe('My Thing');
+});
+
 test('includes up to 2 correlation noticings', () => {
   const logs = buildCycles({
     cycleLengths: [28, 28, 28, 28, 28, 28],

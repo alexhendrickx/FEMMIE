@@ -102,7 +102,7 @@ const STOPWORDS = new Set([
 function words(note: string): string[] {
   return note
     .toLowerCase()
-    .replace(/[^a-z\s]/g, ' ')
+    .replace(/[^\p{L}\s]/gu, ' ') // keep letters of any language (é, ö, …), drop punctuation/digits
     .split(/\s+/)
     .filter(Boolean);
 }
@@ -137,12 +137,14 @@ export function suggestTagsFromNotes(
     }
   }
 
-  const existing = new Set(existingTags.map((t) => normalizeTagName(t.name)));
+  // A candidate is excluded when it already matches a tag — using the SAME fuzzy
+  // match as findDuplicate, so "fog" is dropped when a "Brain fog" tag exists.
+  const alreadyTagged = (phrase: string) => findDuplicate(existingTags, phrase) !== null;
 
   const keptBigrams = [...bigrams.entries()]
     .filter(([phrase, count]) => {
       const [w1, w2] = phrase.split(' ');
-      return count >= threshold && !existing.has(phrase) && w1 !== w2; // drop "cramps cramps"
+      return count >= threshold && !alreadyTagged(phrase) && w1 !== w2; // drop "cramps cramps"
     })
     .map(([phrase, count]) => ({ phrase, count }));
 
@@ -160,7 +162,7 @@ export function suggestTagsFromNotes(
     .filter(
       ([word, count]) =>
         count >= threshold &&
-        !existing.has(word) &&
+        !alreadyTagged(word) &&
         (strongestCovering.get(word) ?? 0) < count,
     )
     .map(([phrase, count]) => ({ phrase, count }));

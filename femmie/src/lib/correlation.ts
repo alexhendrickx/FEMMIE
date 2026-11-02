@@ -104,6 +104,15 @@ function titleCase(id: string): string {
     .join(' ');
 }
 
+/**
+ * Resolve a symptom's display name: a supplied label (custom tags — F2-13) wins,
+ * then the built-in category label, then a title-cased id. Shared by all insight
+ * features so a symptom reads identically everywhere.
+ */
+export function symptomLabel(id: string, labels?: Record<string, string>): string {
+  return labels?.[id] ?? CATEGORY_MAP.get(id)?.label ?? titleCase(id);
+}
+
 function dominantPhaseOf(counts: PhaseCounts): CyclePhase {
   // Ties resolve to the earlier phase in PHASES order (deterministic).
   return PHASES.reduce((best, p) => (counts[p] > counts[best] ? p : best), PHASES[0]);
@@ -163,7 +172,7 @@ export function computeCorrelations(
     const cyclesInDominant = cyclesWithInPhase.get(id)![dominantPhase].size;
     const confidence =
       cyclesObserved >= MIN_CYCLES_FOR_PATTERN ? 'sufficient' : 'low_sample';
-    const symptomName = options.labels?.[id] ?? titleCase(id);
+    const symptomName = symptomLabel(id, options.labels);
 
     out.push({
       symptomId: id,

@@ -79,6 +79,47 @@ test('caps observations at 2, strongest first', () => {
   expect(outlook.observations[1].signal).toBe('pain');
 });
 
+test('surfaces a poor-sleep observation (scale ≤ 2.5)', () => {
+  const logs = build(5, [
+    { dayOffset: 14, cycles: [0, 1, 2, 3], entry: { categoryId: 'sleep_quality', value: 1 } },
+  ]);
+  const outlook = todayOutlook(logs, isoAt(4 * CYCLE + 14))!;
+  const sleep = outlook.observations.find((o) => o.signal === 'sleep');
+  expect(sleep).toBeDefined();
+  expect(sleep!.pattern).toMatch(/in \d+ of \d+ past cycle/);
+});
+
+test('surfaces a pain observation from a boolean symptom (headache)', () => {
+  const logs = build(5, [
+    { dayOffset: 14, cycles: [0, 1, 2, 3], entry: { categoryId: 'headache', value: true } },
+  ]);
+  const outlook = todayOutlook(logs, isoAt(4 * CYCLE + 14))!;
+  expect(outlook.observations.find((o) => o.signal === 'pain')).toBeDefined();
+});
+
+test('does NOT flag normal/positive days as a problem', () => {
+  // Good energy, good sleep, good mood, mild cramps — logged consistently across cycles.
+  const logs = build(5, [
+    { dayOffset: 14, cycles: [0, 1, 2, 3], entry: { categoryId: 'energy', value: 5 } },
+    { dayOffset: 14, cycles: [0, 1, 2, 3], entry: { categoryId: 'sleep_quality', value: 5 } },
+    { dayOffset: 14, cycles: [0, 1, 2, 3], entry: { categoryId: 'mood', value: 'good' } },
+    { dayOffset: 14, cycles: [0, 1, 2, 3], entry: { categoryId: 'cramps', value: 2 } },
+  ]);
+  const outlook = todayOutlook(logs, isoAt(4 * CYCLE + 14))!;
+  expect(outlook.observations).toEqual([]);
+  expect(outlook.suggestion).toBeNull();
+});
+
+test('ratio gate: a minority dip across many cycles is NOT called a tendency', () => {
+  // energy logged in 8 past cycles; low in only 3 of them → 3/8 < 0.5, must not surface
+  const logs = build(9, [
+    { dayOffset: 14, cycles: [0, 1, 2], entry: { categoryId: 'energy', value: 1 } },
+    { dayOffset: 14, cycles: [3, 4, 5, 6, 7], entry: { categoryId: 'energy', value: 4 } },
+  ]);
+  const outlook = todayOutlook(logs, isoAt(8 * CYCLE + 14))!;
+  expect(outlook.observations.find((o) => o.signal === 'energy')).toBeUndefined();
+});
+
 test('excludes the current open cycle from the pattern count', () => {
   // energy dip in 3 past cycles + also today — the count should be the 3 PAST cycles
   const logs = build(5, [

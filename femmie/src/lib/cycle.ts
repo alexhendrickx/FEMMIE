@@ -1,7 +1,7 @@
 import type { DailyLog } from '../types/logging';
 import type { CyclePhase, Prediction } from '../types/cycle';
 
-const MAX_INTRA_PERIOD_GAP = 2; // days
+export const MAX_INTRA_PERIOD_GAP = 2; // days — longest gap between flow days within one period
 const MIN_CYCLE_GAP = 15;       // days
 
 function parseUTC(iso: string): number {

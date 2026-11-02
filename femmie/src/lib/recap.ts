@@ -1,10 +1,10 @@
 import type { DailyLog } from '../types/logging';
-import { CATEGORY_MAP } from '../data/categories';
-import { extractPeriodStarts, daysBetween } from './cycle';
+import { extractPeriodStarts, daysBetween, MAX_INTRA_PERIOD_GAP } from './cycle';
 import {
   isPresent,
   defaultIsSymptom,
   surfaceCorrelations,
+  symptomLabel,
   type CorrelationFeedback,
   type CorrelationOptions,
 } from './correlation';
@@ -19,8 +19,6 @@ import {
 
 /** How many prior cycles the averages compare against. */
 export const RECAP_AVG_WINDOW = 6;
-/** Longest gap (days) between flow days still counted as one period. */
-const MAX_INTRA_PERIOD_GAP = 2;
 
 export interface RecapSymptom {
   symptomId: string;
@@ -39,16 +37,12 @@ export interface CycleRecap {
   avgPeriodLength: number;
   /** Up to 3 most-frequent symptoms in this cycle. */
   topSymptoms: RecapSymptom[];
-  /** Up to 2 observation sentences from the correlation engine. */
+  /**
+   * Up to 2 observation sentences from the correlation engine. NOTE: these are
+   * whole-history patterns (not limited to the recapped cycle) — the card frames them
+   * as "noticings", longer-run tendencies rather than events of this one cycle.
+   */
   noticings: string[];
-}
-
-function nameOf(id: string, labels?: Record<string, string>): string {
-  return (
-    labels?.[id] ??
-    CATEGORY_MAP.get(id)?.label ??
-    id.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-  );
 }
 
 /**
@@ -100,7 +94,7 @@ function topSymptomsInWindow(
     .slice(0, 3)
     .map(([symptomId, count]) => ({
       symptomId,
-      symptomName: nameOf(symptomId, options.labels),
+      symptomName: symptomLabel(symptomId, options.labels),
       count,
     }));
 }
@@ -150,9 +144,10 @@ export function generateRecap(
   return {
     cycleId,
     cycleLength,
-    avgCycleLength: priorCycleLengths.length ? mean(priorCycleLengths) : cycleLength,
+    // starts.length >= 3 guarantees ≥1 prior completed cycle, so these are non-empty.
+    avgCycleLength: mean(priorCycleLengths),
     periodLength,
-    avgPeriodLength: priorPeriodLengths.length ? mean(priorPeriodLengths) : periodLength,
+    avgPeriodLength: mean(priorPeriodLengths),
     topSymptoms: topSymptomsInWindow(logs, cycleId, cycleEnd, options),
     noticings,
   };
