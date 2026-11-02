@@ -8,7 +8,7 @@ function parseUTC(iso: string): number {
   return Date.parse(`${iso}T00:00:00Z`);
 }
 
-function daysBetween(a: string, b: string): number {
+export function daysBetween(a: string, b: string): number {
   return Math.round((parseUTC(b) - parseUTC(a)) / 86400000);
 }
 
