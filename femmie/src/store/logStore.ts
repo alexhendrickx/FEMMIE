@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CATEGORY_MAP } from '../data/categories';
+import { DEFAULT_QUICK_SYMPTOM_IDS, sanitizeSelection } from '../lib/quickSymptoms';
 import type { DailyLog, LogEntry, ShortcutCombo } from '../types/logging';
 
 function todayISO(): string {
@@ -52,12 +53,15 @@ interface LogState {
   reminderTime: { hour: number; minute: number };
   /** User-stated typical cycle length (onboarding) — powers day-one prediction. */
   cycleLengthPref: number;
+  /** The 5–8 symptoms the user pinned for the daily flow (decisions #2/#14/#17). */
+  quickSymptomIds: string[];
 
   saveLog: (log: Omit<DailyLog, 'savedAt'>) => void;
   getLog: (date: string) => DailyLog | undefined;
   hasLoggedToday: () => boolean;
   setReminder: (enabled: boolean, time?: { hour: number; minute: number }) => void;
   setCycleLengthPref: (days: number) => void;
+  setQuickSymptoms: (ids: string[]) => void;
 }
 
 export const useLogStore = create<LogState>()(
@@ -68,6 +72,7 @@ export const useLogStore = create<LogState>()(
       reminderEnabled: false,
       reminderTime: { hour: 21, minute: 30 },
       cycleLengthPref: 28,
+      quickSymptomIds: DEFAULT_QUICK_SYMPTOM_IDS,
 
       saveLog(log) {
         const savedAt = new Date().toISOString();
@@ -96,6 +101,10 @@ export const useLogStore = create<LogState>()(
 
       setCycleLengthPref(days) {
         set({ cycleLengthPref: days });
+      },
+
+      setQuickSymptoms(ids) {
+        set({ quickSymptomIds: sanitizeSelection(ids) });
       },
     }),
     {

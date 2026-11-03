@@ -17,6 +17,8 @@ export interface Category {
   /** Hidden outside the period window (cycleDay <= periodWindowDays) */
   periodOnly: boolean;
   icon: string;
+  /** One-line, plain-language meaning — shown in the quick-symptom picker (decision #14). */
+  explain?: string;
 }
 
 export interface LogEntry {

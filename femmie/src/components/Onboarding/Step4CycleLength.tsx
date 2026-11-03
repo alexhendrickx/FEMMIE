@@ -22,7 +22,7 @@ export function Step4CycleLength({ initial = 28, onDone }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.top}>
-        <Text style={styles.step}>Step 4 of 4</Text>
+        <Text style={styles.step}>Step 4 of 5</Text>
         <Text style={styles.title}>How long is your cycle?</Text>
         <Text style={styles.body}>
           The time from one period to the start of the next. Most cycles are 24–32 days —
@@ -70,7 +70,7 @@ export function Step4CycleLength({ initial = 28, onDone }: Props) {
         onPress={() => onDone(length)}
         accessibilityRole="button"
       >
-        <Text style={styles.btnText}>Start tracking →</Text>
+        <Text style={styles.btnText}>Next →</Text>
       </TouchableOpacity>
     </View>
   );
