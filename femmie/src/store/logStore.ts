@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CATEGORY_MAP } from '../data/categories';
 import { DEFAULT_QUICK_SYMPTOM_IDS, sanitizeSelection } from '../lib/quickSymptoms';
+import type { CorrelationFeedback } from '../lib/correlation';
 import type { DailyLog, LogEntry, ShortcutCombo } from '../types/logging';
 
 function todayISO(): string {
@@ -55,6 +56,12 @@ interface LogState {
   cycleLengthPref: number;
   /** The 5–8 symptoms the user pinned for the daily flow (decisions #2/#14/#17). */
   quickSymptomIds: string[];
+  /**
+   * Per-symptom "helpful / not relevant" verdicts on surfaced patterns (F2-07). A
+   * `helpful: false` entry hides that pattern from History. Local-only, same
+   * AsyncStorage boundary as `logs` — references category ids, no raw health values.
+   */
+  correlationFeedback: CorrelationFeedback;
 
   saveLog: (log: Omit<DailyLog, 'savedAt'>) => void;
   getLog: (date: string) => DailyLog | undefined;
@@ -62,6 +69,7 @@ interface LogState {
   setReminder: (enabled: boolean, time?: { hour: number; minute: number }) => void;
   setCycleLengthPref: (days: number) => void;
   setQuickSymptoms: (ids: string[]) => void;
+  setCorrelationFeedback: (symptomId: string, helpful: boolean) => void;
 }
 
 export const useLogStore = create<LogState>()(
@@ -73,6 +81,7 @@ export const useLogStore = create<LogState>()(
       reminderTime: { hour: 21, minute: 30 },
       cycleLengthPref: 28,
       quickSymptomIds: DEFAULT_QUICK_SYMPTOM_IDS,
+      correlationFeedback: {},
 
       saveLog(log) {
         const savedAt = new Date().toISOString();
@@ -105,6 +114,15 @@ export const useLogStore = create<LogState>()(
 
       setQuickSymptoms(ids) {
         set({ quickSymptomIds: sanitizeSelection(ids) });
+      },
+
+      setCorrelationFeedback(symptomId, helpful) {
+        set((state) => ({
+          correlationFeedback: {
+            ...state.correlationFeedback,
+            [symptomId]: { helpful },
+          },
+        }));
       },
     }),
     {
