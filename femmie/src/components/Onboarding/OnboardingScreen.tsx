@@ -5,22 +5,28 @@ import { Step1Privacy } from './Step1Privacy';
 import { Step2Passkey } from './Step2Passkey';
 import { Step3CycleDate } from './Step3CycleDate';
 import { Step4CycleLength } from './Step4CycleLength';
+import { Step5QuickSymptoms } from './Step5QuickSymptoms';
 
 interface Props {
-  onComplete: (firstCycleDate: string | null, cycleLength: number) => void;
+  onComplete: (
+    firstCycleDate: string | null,
+    cycleLength: number,
+    quickSymptomIds: string[],
+  ) => void;
 }
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3 | 4 | 5;
 
 export function OnboardingScreen({ onComplete }: Props) {
   const [step, setStep] = useState<Step>(1);
   const [firstDate, setFirstDate] = useState<string | null>(null);
+  const [cycleLength, setCycleLength] = useState(28);
 
   return (
     <View style={styles.container}>
       {/* Progress dots */}
       <View style={styles.dots}>
-        {([1, 2, 3, 4] as Step[]).map((s) => (
+        {([1, 2, 3, 4, 5] as Step[]).map((s) => (
           <View
             key={s}
             style={[styles.dot, step >= s && styles.dotActive]}
@@ -39,7 +45,18 @@ export function OnboardingScreen({ onComplete }: Props) {
         />
       )}
       {step === 4 && (
-        <Step4CycleLength onDone={(cycleLength) => onComplete(firstDate, cycleLength)} />
+        <Step4CycleLength
+          initial={cycleLength}
+          onDone={(len) => {
+            setCycleLength(len);
+            setStep(5);
+          }}
+        />
+      )}
+      {step === 5 && (
+        <Step5QuickSymptoms
+          onDone={(quickSymptomIds) => onComplete(firstDate, cycleLength, quickSymptomIds)}
+        />
       )}
     </View>
   );

@@ -39,6 +39,7 @@ function MainApp() {
   const alreadyLogged = hasLoggedToday();
   const reminderEnabled = useLogStore((s) => s.reminderEnabled);
   const reminderTime = useLogStore((s) => s.reminderTime);
+  const quickSymptomIds = useLogStore((s) => s.quickSymptomIds);
 
   // Keep the daily reminder scheduled, and open the flow straight away when the user
   // taps the notification (UX decision #11).
@@ -112,6 +113,7 @@ function MainApp() {
           date={today}
           cycleDay={derived.cycleDay}
           isLikelyPeriod={derived.isLikelyPeriod}
+          quickSymptomIds={quickSymptomIds}
           onClose={() => setFlowOpen(false)}
           onSaved={() => setFlowOpen(false)}
         />
@@ -144,11 +146,18 @@ function AppGate() {
   const [onboardingDone, setOnboardingDone] = useState(false);
   const saveLog = useLogStore((s) => s.saveLog);
   const setCycleLengthPref = useLogStore((s) => s.setCycleLengthPref);
+  const setQuickSymptoms = useLogStore((s) => s.setQuickSymptoms);
 
   // Store the stated cycle length and seed the first period start, so predictions and
   // the calendar are alive from day one (UX decision #16) instead of an empty ring.
-  const finishOnboarding = (firstCycleDate: string | null, cycleLength: number) => {
+  // Also pin the user's chosen 5–8 quick symptoms (decisions #2/#14/#17).
+  const finishOnboarding = (
+    firstCycleDate: string | null,
+    cycleLength: number,
+    quickSymptomIds: string[],
+  ) => {
     setCycleLengthPref(cycleLength);
+    setQuickSymptoms(quickSymptomIds);
     if (firstCycleDate) {
       saveLog({
         date: firstCycleDate,

@@ -34,17 +34,8 @@ export function buildFlowSteps(opts: { isLikelyPeriod: boolean }): FlowStepId[] 
     : ['mood', 'symptoms', 'insight'];
 }
 
-/** A sensible default quick-symptom set until the user pins her own 5–8 (decision #2/#17). */
-export const DEFAULT_QUICK_SYMPTOM_IDS = [
-  'cramps',
-  'headache',
-  'bloating',
-  'fatigue',
-  'back_pain',
-  'nausea',
-  'acne',
-  'breast_tenderness',
-];
+/** Re-exported for existing callers; the quick-symptom set lives in ./quickSymptoms. */
+export { DEFAULT_QUICK_SYMPTOM_IDS } from './quickSymptoms';
 
 /** The "present today" value for a quick symptom, by its input type. */
 function presentValue(categoryId: string): LogEntry['value'] {
