@@ -11,6 +11,7 @@ import { WipeConfirmSheet } from './WipeConfirmSheet';
 import { wipeLocal } from '../../services/encryption';
 import { wipeDatabase } from '../../services/sqlite';
 import { useEncryptionStore } from '../../store/encryptionStore';
+import { usePainStore } from '../../store/painStore';
 import { colors } from '../../theme/colors';
 import type { WipeMode } from '../../types/encryption';
 
@@ -44,6 +45,8 @@ export function PrivacyScreen() {
       // 1. Destroy local data + key
       await wipeLocal();
       await wipeDatabase();
+      usePainStore.getState().clearAll();
+      await usePainStore.persist.clearStorage();
 
       // 2. Notify backend (fire-and-forget — local is already gone)
       fetch(`${API_BASE}/account`, {
