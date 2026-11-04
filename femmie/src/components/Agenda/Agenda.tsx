@@ -18,8 +18,6 @@ interface AgendaProps {
   today: string;
   /** Tapping a day (e.g. to log / edit it). Rows are static when omitted. */
   onDayPress?: (date: string) => void;
-  /** Rendered after the last section — e.g. the Insights/patterns block. */
-  footer?: React.ReactNode;
 }
 
 /** Whole-date colour + text colour for each cycle state (Femmie tokens only). */
@@ -36,7 +34,7 @@ const STATE_LABEL: Record<Exclude<DayState, null>, string> = {
   fertile: 'Fertile window',
 };
 
-export function Agenda({ logs, today, onDayPress, footer }: AgendaProps) {
+export function Agenda({ logs, today, onDayPress }: AgendaProps) {
   const sections = useMemo(() => buildAgenda(logs, today), [logs, today]);
 
   return (
@@ -49,7 +47,6 @@ export function Agenda({ logs, today, onDayPress, footer }: AgendaProps) {
           ))}
         </View>
       ))}
-      {footer}
     </ScrollView>
   );
 }

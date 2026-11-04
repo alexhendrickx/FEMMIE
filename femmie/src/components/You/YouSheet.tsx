@@ -9,12 +9,13 @@ import {
   View,
 } from 'react-native';
 import { HistoryView } from './HistoryView';
+import { InsightsScreen } from '../Insights';
 import { HealthIntegrationScreen } from '../HealthIntegration/HealthIntegrationScreen';
 import { PrivacyScreen } from '../PrivacyScreen';
 import { SettingsScreen } from './SettingsScreen';
 import { colors } from '../../theme/colors';
 
-type YouView = 'list' | 'history' | 'health' | 'privacy' | 'settings';
+type YouView = 'list' | 'history' | 'insights' | 'health' | 'privacy' | 'settings';
 
 interface YouSheetProps {
   visible: boolean;
@@ -24,6 +25,7 @@ interface YouSheetProps {
 
 const ROW_DEFS: { id: Exclude<YouView, 'list'>; icon: string; label: string }[] = [
   { id: 'history', icon: '📅', label: 'History' },
+  { id: 'insights', icon: '💡', label: 'Insights' },
   { id: 'health', icon: '❤️', label: 'Health' },
   { id: 'privacy', icon: '🔒', label: 'Privacy' },
   { id: 'settings', icon: '⚙️', label: 'Settings' },
@@ -32,6 +34,7 @@ const ROW_DEFS: { id: Exclude<YouView, 'list'>; icon: string; label: string }[] 
 const TITLES: Record<YouView, string> = {
   list: 'You',
   history: 'History',
+  insights: 'Insights',
   health: 'Health',
   privacy: 'Privacy',
   settings: 'Settings',
@@ -94,6 +97,7 @@ export function YouSheet({ visible, onClose, onCalendarDayLog }: YouSheetProps) 
         )}
 
         {view === 'history' && <HistoryView onDayLog={onCalendarDayLog} />}
+        {view === 'insights' && <InsightsScreen />}
         {view === 'health' && <HealthIntegrationScreen />}
         {view === 'privacy' && <PrivacyScreen />}
         {view === 'settings' && <SettingsScreen />}
