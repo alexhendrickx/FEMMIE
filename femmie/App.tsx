@@ -17,6 +17,7 @@ import { CycleSummary } from './src/components/CycleRing';
 import { DailyFlow } from './src/components/DailyFlow';
 import { DailyLogSheet } from './src/components/DailyLog/DailyLogSheet';
 import { YouSheet } from './src/components/You';
+import { CalendarModal } from './src/components/Calendar';
 import { useLogStore } from './src/store/logStore';
 import { colors } from './src/theme/colors';
 import {
@@ -33,6 +34,7 @@ function MainApp() {
   const [youOpen, setYouOpen] = useState(false);
   const [flowOpen, setFlowOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const logs = useLogStore((s) => s.logs);
   const hasLoggedToday = useLogStore((s) => s.hasLoggedToday);
   const alreadyLogged = hasLoggedToday();
@@ -79,7 +81,7 @@ function MainApp() {
             </TouchableOpacity>
           </View>
 
-          <CycleSummary onPressRing={() => setFlowOpen(true)} />
+          <CycleSummary onPressRing={() => setCalendarOpen(true)} />
 
           <View style={styles.bottomBar}>
             <TouchableOpacity
@@ -126,6 +128,15 @@ function MainApp() {
           onClose={() => setYouOpen(false)}
           onCalendarDayLog={() => {
             setYouOpen(false);
+            setFlowOpen(true);
+          }}
+        />
+
+        <CalendarModal
+          visible={calendarOpen}
+          onClose={() => setCalendarOpen(false)}
+          onDayLog={() => {
+            setCalendarOpen(false);
             setFlowOpen(true);
           }}
         />
