@@ -65,6 +65,55 @@ export async function generateDEK(): Promise<Uint8Array> {
 }
 
 /**
+ * Local-only DEK lifecycle (offline-first, no backend required).
+ *
+ * The DEK is stored in SecureStore, which is backed by the iOS Keychain /
+ * Android Keystore. Unlike AsyncStorage, Keychain items are hardware-protected
+ * and are NOT included in unencrypted iCloud/iTunes device backups, so health
+ * data encrypted with this key never leaves the device in readable form.
+ *
+ * Returns true once `_plaintextDek` is held in memory. Generates and persists a
+ * fresh DEK on first launch. KMS wrapping (wrapAndStoreDEK) layers on top of
+ * this later for cross-device sync; it is not required for at-rest safety.
+ */
+export async function initLocalDEK(): Promise<boolean> {
+  const sodium = getSodium();
+  if (!sodium) {
+    // No libsodium (Expo Go / tests). Honour the fail-closed posture.
+    return _allowPlaintextFallback;
+  }
+
+  try {
+    await sodium.ready;
+
+    const existing = await SecureStore.getItemAsync(SECURE_STORE_KEY);
+    if (existing) {
+      _plaintextDek = Buffer.from(existing, 'base64');
+      return true;
+    }
+
+    const key = sodium.crypto_secretbox_keygen();
+    await SecureStore.setItemAsync(SECURE_STORE_KEY, Buffer.from(key).toString('base64'), {
+      // Never roam to another device or survive in a restored backup.
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+    _plaintextDek = key;
+    return true;
+  } catch {
+    // libsodium present but its native (JSI) layer isn't callable — e.g. the
+    // Node test runner, or a misconfigured build. Don't crash persistence:
+    // leave the DEK unset so encrypt/decrypt apply their own fail-closed guard
+    // (hard error in production, dev fallback otherwise).
+    return _allowPlaintextFallback;
+  }
+}
+
+/** True once a DEK is loaded in memory and real encryption is available. */
+export function isEncryptionReady(): boolean {
+  return _plaintextDek !== null && getSodium() !== null;
+}
+
+/**
  * Wrap DEK with KMS via backend, then store the wrapped key locally.
  * The plaintext DEK is never sent to the server.
  */

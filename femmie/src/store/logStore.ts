@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { encryptedStorage } from '../services/secureStorage';
 import { CATEGORY_MAP } from '../data/categories';
 import { DEFAULT_QUICK_SYMPTOM_IDS, sanitizeSelection } from '../lib/quickSymptoms';
 import type { CorrelationFeedback } from '../lib/correlation';
@@ -58,8 +58,8 @@ interface LogState {
   quickSymptomIds: string[];
   /**
    * Per-symptom "helpful / not relevant" verdicts on surfaced patterns (F2-07). A
-   * `helpful: false` entry hides that pattern from History. Local-only, same
-   * AsyncStorage boundary as `logs` — references category ids, no raw health values.
+   * `helpful: false` entry hides that pattern from History. Persisted through the
+   * same encrypted-at-rest boundary as `logs` (see `encryptedStorage`).
    */
   correlationFeedback: CorrelationFeedback;
 
@@ -127,7 +127,8 @@ export const useLogStore = create<LogState>()(
     }),
     {
       name: 'femmie-logs',
-      storage: createJSONStorage(() => AsyncStorage),
+      // Health values (flow, mood, symptoms) — encrypted at rest, never plaintext.
+      storage: createJSONStorage(() => encryptedStorage),
     },
   ),
 );
