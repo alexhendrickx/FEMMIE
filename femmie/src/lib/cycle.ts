@@ -4,6 +4,14 @@ import type { CyclePhase, Prediction } from '../types/cycle';
 export const MAX_INTRA_PERIOD_GAP = 2; // days — longest gap between flow days within one period
 const MIN_CYCLE_GAP = 15;       // days
 
+/** Human-readable phase names shared by the ring and the Today's-outlook card. */
+export const PHASE_LABEL: Record<CyclePhase, string> = {
+  period: 'Period',
+  follicular: 'Follicular',
+  fertile: 'Fertile window',
+  luteal: 'Luteal',
+};
+
 /** Canonical YYYY-MM-DD shape, shared across the date-aware modules. */
 export const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export function isIsoDate(s: unknown): s is string {

@@ -12,6 +12,8 @@ export function SettingsScreen() {
   const reminderEnabled = useLogStore((s) => s.reminderEnabled);
   const reminderTime = useLogStore((s) => s.reminderTime);
   const setReminder = useLogStore((s) => s.setReminder);
+  const phaseContentMuted = useLogStore((s) => s.phaseContentMuted);
+  const setPhaseContentMuted = useLogStore((s) => s.setPhaseContentMuted);
   const quickSymptomIds = useLogStore((s) => s.quickSymptomIds);
   const setQuickSymptoms = useLogStore((s) => s.setQuickSymptoms);
   const [editingSymptoms, setEditingSymptoms] = useState(false);
@@ -65,6 +67,22 @@ export function SettingsScreen() {
             onValueChange={(v) => void toggleReminder(v)}
             trackColor={{ false: colors.border, true: colors.periodConfirmed }}
             accessibilityLabel="Daily reminder"
+          />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Home</Text>
+        <View style={styles.row}>
+          <View style={styles.rowTextWrap}>
+            <Text style={styles.rowLabel}>Mute phase content</Text>
+            <Text style={styles.hint}>Hides the Today's outlook card and its cycle-phase notes</Text>
+          </View>
+          <Switch
+            value={phaseContentMuted}
+            onValueChange={setPhaseContentMuted}
+            trackColor={{ false: colors.border, true: colors.periodConfirmed }}
+            accessibilityLabel="Mute phase content"
           />
         </View>
       </View>

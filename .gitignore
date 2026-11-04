@@ -39,3 +39,6 @@ yarn-error.*
 # local delivery artifacts
 femmie-work.bundle
 *.bundle
+
+# nested agent-state under femmie (plans/progress are not committed)
+femmie/.claude/state/

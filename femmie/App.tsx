@@ -14,6 +14,7 @@ import { scheduleBedtimeReminder } from './src/utils/notifications';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { OnboardingScreen, ReconnectBanner } from './src/components/Onboarding';
 import { CycleSummary } from './src/components/CycleRing';
+import { TodayOutlookCard } from './src/components/TodayOutlook';
 import { DailyFlow } from './src/components/DailyFlow';
 import { DailyLogSheet } from './src/components/DailyLog/DailyLogSheet';
 import { YouSheet } from './src/components/You';
@@ -82,6 +83,7 @@ function MainApp() {
           </View>
 
           <CycleSummary onPressRing={() => setCalendarOpen(true)} />
+          <TodayOutlookCard />
 
           <View style={styles.bottomBar}>
             <TouchableOpacity

@@ -62,6 +62,11 @@ interface LogState {
    * same encrypted-at-rest boundary as `logs` (see `encryptedStorage`).
    */
   correlationFeedback: CorrelationFeedback;
+  /**
+   * "Mute phase content" (F2-08): hides the Today's-outlook card on Home. A display
+   * preference, persisted through the same encrypted boundary as `logs`.
+   */
+  phaseContentMuted: boolean;
 
   saveLog: (log: Omit<DailyLog, 'savedAt'>) => void;
   getLog: (date: string) => DailyLog | undefined;
@@ -70,6 +75,7 @@ interface LogState {
   setCycleLengthPref: (days: number) => void;
   setQuickSymptoms: (ids: string[]) => void;
   setCorrelationFeedback: (symptomId: string, helpful: boolean) => void;
+  setPhaseContentMuted: (muted: boolean) => void;
 }
 
 export const useLogStore = create<LogState>()(
@@ -82,6 +88,7 @@ export const useLogStore = create<LogState>()(
       cycleLengthPref: 28,
       quickSymptomIds: DEFAULT_QUICK_SYMPTOM_IDS,
       correlationFeedback: {},
+      phaseContentMuted: false,
 
       saveLog(log) {
         const savedAt = new Date().toISOString();
@@ -123,6 +130,10 @@ export const useLogStore = create<LogState>()(
             [symptomId]: { helpful },
           },
         }));
+      },
+
+      setPhaseContentMuted(muted) {
+        set({ phaseContentMuted: muted });
       },
     }),
     {
