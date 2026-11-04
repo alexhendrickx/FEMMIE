@@ -13,14 +13,12 @@ import { HealthIntegrationScreen } from '../HealthIntegration/HealthIntegrationS
 import { PrivacyScreen } from '../PrivacyScreen';
 import { SettingsScreen } from './SettingsScreen';
 import { colors } from '../../theme/colors';
-import type { DayData } from '../../types/calendar';
 
 type YouView = 'list' | 'history' | 'health' | 'privacy' | 'settings';
 
 interface YouSheetProps {
   visible: boolean;
   onClose: () => void;
-  calendarDays: DayData[];
   onCalendarDayLog: () => void;
 }
 
@@ -39,7 +37,7 @@ const TITLES: Record<YouView, string> = {
   settings: 'Settings',
 };
 
-export function YouSheet({ visible, onClose, calendarDays, onCalendarDayLog }: YouSheetProps) {
+export function YouSheet({ visible, onClose, onCalendarDayLog }: YouSheetProps) {
   const [view, setView] = useState<YouView>('list');
 
   const handleClose = () => {
@@ -95,9 +93,7 @@ export function YouSheet({ visible, onClose, calendarDays, onCalendarDayLog }: Y
           </ScrollView>
         )}
 
-        {view === 'history' && (
-          <HistoryView calendarDays={calendarDays} onDayLog={onCalendarDayLog} />
-        )}
+        {view === 'history' && <HistoryView onDayLog={onCalendarDayLog} />}
         {view === 'health' && <HealthIntegrationScreen />}
         {view === 'privacy' && <PrivacyScreen />}
         {view === 'settings' && <SettingsScreen />}

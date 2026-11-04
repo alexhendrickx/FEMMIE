@@ -25,7 +25,6 @@ import {
   averageCycleLength,
   cyclePhase,
 } from './src/lib/cycle';
-import { buildCalendarDays } from './src/lib/calendar';
 import { todayISO } from './src/components/CycleCalendar/utils';
 
 // ── Main app (shown after auth) ───────────────────────────────────────────────
@@ -60,11 +59,7 @@ function MainApp() {
     const avg = averageCycleLength(starts);
     const phase = cycleDay !== null ? cyclePhase(cycleDay, avg) : null;
     const isLikelyPeriod = phase === 'period';
-    return {
-      cycleDay,
-      isLikelyPeriod,
-      calendarDays: buildCalendarDays(logList, today),
-    };
+    return { cycleDay, isLikelyPeriod };
   }, [logs, today]);
 
   return (
@@ -129,7 +124,6 @@ function MainApp() {
         <YouSheet
           visible={youOpen}
           onClose={() => setYouOpen(false)}
-          calendarDays={derived.calendarDays}
           onCalendarDayLog={() => {
             setYouOpen(false);
             setFlowOpen(true);
