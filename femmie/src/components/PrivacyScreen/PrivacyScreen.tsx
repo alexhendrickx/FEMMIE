@@ -12,6 +12,7 @@ import { wipeLocal } from '../../services/encryption';
 import { wipeDatabase } from '../../services/sqlite';
 import { useEncryptionStore } from '../../store/encryptionStore';
 import { usePainStore } from '../../store/painStore';
+import { useMoodStore } from '../../store/moodStore';
 import { colors } from '../../theme/colors';
 import type { WipeMode } from '../../types/encryption';
 
@@ -42,13 +43,19 @@ export function PrivacyScreen() {
       setWiping(true);
       requestWipe(mode);
 
-      // 1. Destroy local data + key
+      // 1. Clear persisted stores FIRST: clearAll() triggers an async encrypted re-write that
+      //    calls initLocalDEK(), which would mint a NEW keychain key if it ran after wipeLocal().
+      //    Clearing before the key is destroyed means the wipe ends with no DEK in the keychain.
+      useMoodStore.getState().clearAll();
+      await useMoodStore.persist.clearStorage();
+
+      // 2. Destroy local data + key
       await wipeLocal();
       await wipeDatabase();
       usePainStore.getState().clearAll();
       await usePainStore.persist.clearStorage();
 
-      // 2. Notify backend (fire-and-forget — local is already gone)
+      // 3. Notify backend (fire-and-forget — local is already gone)
       fetch(`${API_BASE}/account`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
