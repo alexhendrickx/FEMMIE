@@ -4,6 +4,7 @@ import { encryptedStorage } from '../services/secureStorage';
 import { CATEGORY_MAP } from '../data/categories';
 import { DEFAULT_QUICK_SYMPTOM_IDS, sanitizeSelection } from '../lib/quickSymptoms';
 import type { CorrelationFeedback } from '../lib/correlation';
+import { remapTagInLogsDeduped, removeTagFromLogs } from '../lib/tagsManager';
 import type { DailyLog, LogEntry, ShortcutCombo } from '../types/logging';
 
 function todayISO(): string {
@@ -76,6 +77,10 @@ interface LogState {
   setQuickSymptoms: (ids: string[]) => void;
   setCorrelationFeedback: (symptomId: string, helpful: boolean) => void;
   setPhaseContentMuted: (muted: boolean) => void;
+  /** Re-point every entry tagged `fromId` onto `toId` (custom-tag merge, F2-13). */
+  remapCategory: (fromId: string, toId: string) => void;
+  /** Strip every entry tagged `categoryId` (custom-tag delete, F2-13). */
+  removeCategory: (categoryId: string) => void;
 }
 
 export const useLogStore = create<LogState>()(
@@ -134,6 +139,24 @@ export const useLogStore = create<LogState>()(
 
       setPhaseContentMuted(muted) {
         set({ phaseContentMuted: muted });
+      },
+
+      remapCategory(fromId, toId) {
+        set((state) => {
+          const list = remapTagInLogsDeduped(Object.values(state.logs), fromId, toId);
+          const logs = Object.fromEntries(list.map((l) => [l.date, l]));
+          const { [fromId]: _drop, ...correlationFeedback } = state.correlationFeedback;
+          return { logs, shortcuts: detectShortcuts(list), correlationFeedback };
+        });
+      },
+
+      removeCategory(categoryId) {
+        set((state) => {
+          const list = removeTagFromLogs(Object.values(state.logs), categoryId);
+          const logs = Object.fromEntries(list.map((l) => [l.date, l]));
+          const { [categoryId]: _drop, ...correlationFeedback } = state.correlationFeedback;
+          return { logs, shortcuts: detectShortcuts(list), correlationFeedback };
+        });
       },
     }),
     {

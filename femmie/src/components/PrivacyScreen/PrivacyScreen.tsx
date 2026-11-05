@@ -13,6 +13,7 @@ import { wipeDatabase } from '../../services/sqlite';
 import { useEncryptionStore } from '../../store/encryptionStore';
 import { usePainStore } from '../../store/painStore';
 import { useMoodStore } from '../../store/moodStore';
+import { useTagStore } from '../../store/tagStore';
 import { colors } from '../../theme/colors';
 import type { WipeMode } from '../../types/encryption';
 
@@ -48,6 +49,7 @@ export function PrivacyScreen() {
       //    Clearing before the key is destroyed means the wipe ends with no DEK in the keychain.
       useMoodStore.getState().clearAll();
       await useMoodStore.persist.clearStorage();
+      await useTagStore.getState().clearAll(); // tags: clear persisted envelope + memory before the key is destroyed
 
       // 2. Destroy local data + key
       await wipeLocal();

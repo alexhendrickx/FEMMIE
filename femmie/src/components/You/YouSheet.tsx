@@ -12,12 +12,13 @@ import { HistoryView } from './HistoryView';
 import { InsightsScreen } from '../Insights';
 import { PainScreen } from '../Pain';
 import { MoodScreen } from '../Mood';
+import { TagManagerScreen } from '../Tags';
 import { HealthIntegrationScreen } from '../HealthIntegration/HealthIntegrationScreen';
 import { PrivacyScreen } from '../PrivacyScreen';
 import { SettingsScreen } from './SettingsScreen';
 import { colors } from '../../theme/colors';
 
-type YouView = 'list' | 'history' | 'insights' | 'pain' | 'mood' | 'health' | 'privacy' | 'settings';
+type YouView = 'list' | 'history' | 'insights' | 'pain' | 'mood' | 'tags' | 'health' | 'privacy' | 'settings';
 
 interface YouSheetProps {
   visible: boolean;
@@ -30,6 +31,7 @@ const ROW_DEFS: { id: Exclude<YouView, 'list'>; icon: string; label: string }[] 
   { id: 'insights', icon: '💡', label: 'Insights' },
   { id: 'pain', icon: '🩹', label: 'Pain' },
   { id: 'mood', icon: '💭', label: 'Mood' },
+  { id: 'tags', icon: '🏷️', label: 'Tags' },
   { id: 'health', icon: '❤️', label: 'Health' },
   { id: 'privacy', icon: '🔒', label: 'Privacy' },
   { id: 'settings', icon: '⚙️', label: 'Settings' },
@@ -41,6 +43,7 @@ const TITLES: Record<YouView, string> = {
   insights: 'Insights',
   pain: 'Pain',
   mood: 'Mood',
+  tags: 'Tags',
   health: 'Health',
   privacy: 'Privacy',
   settings: 'Settings',
@@ -106,6 +109,7 @@ export function YouSheet({ visible, onClose, onCalendarDayLog }: YouSheetProps) 
         {view === 'insights' && <InsightsScreen />}
         {view === 'pain' && <PainScreen />}
         {view === 'mood' && <MoodScreen />}
+        {view === 'tags' && <TagManagerScreen />}
         {view === 'health' && <HealthIntegrationScreen />}
         {view === 'privacy' && <PrivacyScreen />}
         {view === 'settings' && <SettingsScreen />}
