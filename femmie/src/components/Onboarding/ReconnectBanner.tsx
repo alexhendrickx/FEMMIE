@@ -20,7 +20,7 @@ export function ReconnectBanner({ visible }: Props) {
 
   return (
     <Animated.View style={[styles.banner, { transform: [{ translateY: slideAnim }] }]}>
-      <Text style={styles.text}>📡 You're offline — your data is safe on this device</Text>
+      <Text style={styles.text}>📡 You're offline. Your data is safe on this device.</Text>
     </Animated.View>
   );
 }

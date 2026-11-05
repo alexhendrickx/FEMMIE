@@ -31,10 +31,9 @@ export function Step3CycleDate({ onNext }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.top}>
-        <Text style={styles.step}>Step 3 of 3</Text>
         <Text style={styles.title}>When did your last period start?</Text>
         <Text style={styles.body}>
-          This helps Femmie predict your next cycle right away. You can skip if you prefer.
+          Helps Femmie predict your next cycle. Skip if you're not sure.
         </Text>
       </View>
 
@@ -129,7 +128,6 @@ export function Step3CycleDate({ onNext }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24 },
   top: { marginTop: 24, marginBottom: 16 },
-  step: { fontSize: 13, color: colors.textMuted, fontWeight: '600', marginBottom: 8 },
   title: { fontSize: 26, fontWeight: '800', color: colors.text, marginBottom: 10, lineHeight: 32 },
   body: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
 

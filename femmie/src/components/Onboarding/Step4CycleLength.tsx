@@ -22,11 +22,9 @@ export function Step4CycleLength({ initial = 28, onDone }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.top}>
-        <Text style={styles.step}>Step 4 of 5</Text>
         <Text style={styles.title}>How long is your cycle?</Text>
         <Text style={styles.body}>
-          The time from one period to the start of the next. Most cycles are 24–32 days —
-          you can always change this later.
+          The number of days from one period to the next. Most are 24 to 32. You can change this later.
         </Text>
       </View>
 
@@ -79,7 +77,6 @@ export function Step4CycleLength({ initial = 28, onDone }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24 },
   top: { marginTop: 24, marginBottom: 24 },
-  step: { fontSize: 13, color: colors.textMuted, fontWeight: '600', marginBottom: 8 },
   title: { fontSize: 26, fontWeight: '800', color: colors.text, marginBottom: 10, lineHeight: 32 },
   body: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
 
