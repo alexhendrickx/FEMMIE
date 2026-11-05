@@ -38,14 +38,13 @@ export function Step2Passkey({ onNext }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.top}>
-        <Text style={styles.step}>Step 2 of 3</Text>
         <Text style={styles.title}>
           {hasPasskey ? 'Welcome back' : 'Set up your passkey'}
         </Text>
         <Text style={styles.body}>
           {hasPasskey
-            ? "Confirm it's you with Face ID or fingerprint to continue."
-            : 'Femmie uses your device\'s biometric security instead of a password. Your login key never leaves this phone.'}
+            ? "Confirm it's you with Face ID or fingerprint."
+            : 'Unlock with Face ID or fingerprint. No password, and your key never leaves this phone.'}
         </Text>
       </View>
 
@@ -89,12 +88,6 @@ const styles = StyleSheet.create({
   },
   top: {
     marginTop: 24,
-  },
-  step: {
-    fontSize: 13,
-    color: colors.textMuted,
-    fontWeight: '600',
-    marginBottom: 8,
   },
   title: {
     fontSize: 30,

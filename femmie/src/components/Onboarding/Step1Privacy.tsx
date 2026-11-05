@@ -7,9 +7,9 @@ interface Props {
 }
 
 const PROMISES = [
-  { icon: '🔑', text: 'Your data is encrypted on your device. Only you can read it.' },
-  { icon: '🚫', text: 'No ads, no data brokers, no selling your health data. Ever.' },
-  { icon: '🗑️', text: 'Delete everything — device and servers — with one tap, any time.' },
+  { icon: '🔑', text: 'Encrypted on your device. Only you can read it.' },
+  { icon: '🚫', text: 'No ads and no trackers. We never sell your data.' },
+  { icon: '🗑️', text: 'Delete everything, everywhere, in one tap.' },
 ];
 
 export function Step1Privacy({ onNext }: Props) {
@@ -18,7 +18,7 @@ export function Step1Privacy({ onNext }: Props) {
       <View style={styles.top}>
         <Text style={styles.eyebrow}>Welcome to</Text>
         <Text style={styles.title}>Femmie</Text>
-        <Text style={styles.subtitle}>This is your space. Private by design.</Text>
+        <Text style={styles.subtitle}>Private by design.</Text>
       </View>
 
       <View style={styles.promises}>

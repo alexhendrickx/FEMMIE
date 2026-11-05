@@ -34,7 +34,7 @@ export function QuickSymptomPicker({ initial, ctaLabel, onDone }: Props) {
 
   const hint = !valid
     ? count < MIN_QUICK_SYMPTOMS
-      ? `Pick at least ${MIN_QUICK_SYMPTOMS} — the ones you want to check each day.`
+      ? `Pick at least ${MIN_QUICK_SYMPTOMS} to check each day.`
       : `Up to ${MAX_QUICK_SYMPTOMS}. Tap one to swap it out.`
     : `${count} of up to ${MAX_QUICK_SYMPTOMS} chosen.`;
 

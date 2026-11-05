@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { colors } from '../../theme/colors';
+import { Stepper } from '../common/Stepper';
 import { Step1Privacy } from './Step1Privacy';
 import { Step2Passkey } from './Step2Passkey';
 import { Step3CycleDate } from './Step3CycleDate';
@@ -24,15 +25,11 @@ export function OnboardingScreen({ onComplete }: Props) {
 
   return (
     <View style={styles.container}>
-      {/* Progress dots */}
-      <View style={styles.dots}>
-        {([1, 2, 3, 4, 5] as Step[]).map((s) => (
-          <View
-            key={s}
-            style={[styles.dot, step >= s && styles.dotActive]}
-          />
-        ))}
-      </View>
+      <Stepper
+        total={5}
+        current={step}
+        onBack={step > 1 ? () => setStep((s) => (s - 1) as Step) : undefined}
+      />
 
       {step === 1 && <Step1Privacy onNext={() => setStep(2)} />}
       {step === 2 && <Step2Passkey onNext={() => setStep(3)} />}
@@ -66,21 +63,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  dots: {
-    flexDirection: 'row',
-    gap: 6,
-    justifyContent: 'center',
-    paddingTop: 60,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.border,
-  },
-  dotActive: {
-    backgroundColor: colors.periodConfirmed,
-    width: 20,
   },
 });
