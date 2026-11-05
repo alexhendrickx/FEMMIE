@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { colors } from '../../theme/colors';
+import { PHASE_LABEL } from '../../lib/cycle';
 import type { CyclePhase } from '../../types/cycle';
 
 const SIZE = 180;
@@ -14,13 +15,6 @@ const PHASE_COLOR: Record<CyclePhase, string> = {
   follicular: colors.today,
   fertile: colors.fertile,
   luteal: colors.textSecondary,
-};
-
-const PHASE_LABEL: Record<CyclePhase, string> = {
-  period: 'Period',
-  follicular: 'Follicular',
-  fertile: 'Fertile window',
-  luteal: 'Luteal',
 };
 
 interface CycleRingProps {
