@@ -11,7 +11,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.femmie.app"
+      "bundleIdentifier": "com.femmie.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
