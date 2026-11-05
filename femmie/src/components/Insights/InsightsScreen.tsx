@@ -1,8 +1,10 @@
 import React, { useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useLogStore } from '../../store/logStore';
+import { useTagStore } from '../../store/tagStore';
 import { surfaceCorrelations } from '../../lib/correlation';
 import { generateRecap } from '../../lib/recap';
+import { buildTagLabels } from '../../lib/customTags';
 import { colors } from '../../theme/colors';
 
 /**
@@ -17,12 +19,17 @@ export function InsightsScreen() {
   const logs = useLogStore((s) => s.logs);
   const feedback = useLogStore((s) => s.correlationFeedback);
   const setFeedback = useLogStore((s) => s.setCorrelationFeedback);
+  const tags = useTagStore((s) => s.tags);
 
   const logList = useMemo(() => Object.values(logs), [logs]);
-  const recap = useMemo(() => generateRecap(logList, feedback), [logList, feedback]);
+  const labels = useMemo(() => buildTagLabels(tags), [tags]);
+  const recap = useMemo(
+    () => generateRecap(logList, feedback, { labels }),
+    [logList, feedback, labels],
+  );
   const patterns = useMemo(
-    () => surfaceCorrelations(logList, feedback),
-    [logList, feedback],
+    () => surfaceCorrelations(logList, feedback, { labels }),
+    [logList, feedback, labels],
   );
 
   return (
