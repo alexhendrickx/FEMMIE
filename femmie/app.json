@@ -30,6 +30,12 @@
       "react-native-health-connect",
       "expo-asset",
       "react-native-libsodium"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "37030386-a8be-4f85-9b78-96779f3e9114"
+      }
+    },
+    "owner": "alexhendrickxs-team"
   }
 }
