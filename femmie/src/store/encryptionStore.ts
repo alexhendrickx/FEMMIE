@@ -1,19 +1,20 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { KeyMaterial, SyncStatus, WipeMode, WipeState } from '../types/encryption';
+import type { SyncStatus, WipeMode, WipeState } from '../types/encryption';
+import type { RecoveryKeyMaterial } from '../types/auth';
 
 interface EncryptionState {
   /** Set after key is loaded into memory */
   keyReady: boolean;
-  keyMaterial: KeyMaterial | null;
+  keyMaterial: RecoveryKeyMaterial | null;
   cloudSyncEnabled: boolean;
   syncStatus: SyncStatus;
   lastSyncAt: string | null;
   wipe: WipeState;
 
   setKeyReady: (ready: boolean) => void;
-  setKeyMaterial: (material: KeyMaterial | null) => void;
+  setKeyMaterial: (material: RecoveryKeyMaterial | null) => void;
   setCloudSync: (enabled: boolean) => void;
   setSyncStatus: (status: SyncStatus, syncedAt?: string) => void;
   requestWipe: (mode: WipeMode) => void;

@@ -16,7 +16,8 @@
  * Requires expo-dev-client (not compatible with Expo Go).
  */
 import * as SecureStore from 'expo-secure-store';
-import type { EncryptedPayload, KeyMaterial } from '../types/encryption';
+import type { EncryptedPayload } from '../types/encryption';
+import type { RecoveryKeyMaterial } from '../types/auth';
 
 // Lazy-require so the module degrades gracefully when not installed
 function getSodium() {
@@ -30,7 +31,6 @@ function getSodium() {
 }
 
 const SECURE_STORE_KEY = 'femmie_dek_v1';
-const SECURE_STORE_WRAPPED = 'femmie_wrapped_key_v1';
 
 // In-memory key — never written to AsyncStorage or logs
 let _plaintextDek: Uint8Array | null = null;
@@ -114,71 +114,86 @@ export function isEncryptionReady(): boolean {
 }
 
 /**
- * Wrap DEK with KMS via backend, then store the wrapped key locally.
- * The plaintext DEK is never sent to the server.
+ * Wrap the current in-memory DEK with a passphrase-derived key (Argon2id via
+ * crypto_pwhash, libsodium). The plaintext passphrase and the plaintext DEK
+ * never leave this function — only the wrapped blob + salt + KDF params are
+ * returned, safe to upload to Supabase's key_material table.
  */
-export async function wrapAndStoreDEK(
-  dek: Uint8Array,
-  apiBase: string,
-  authToken: string,
-): Promise<KeyMaterial> {
-  // Backend wraps a client-generated random bytes blob, not the DEK itself.
-  // We use envelope encryption: the DEK encrypts data, KMS encrypts the DEK.
-  const res = await fetch(`${apiBase}/encryption/wrap-key`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${authToken}`,
-    },
-    body: JSON.stringify({ keyBytes: Buffer.from(dek).toString('base64') }),
-  });
+export async function wrapDekWithPassphrase(
+  passphrase: string,
+): Promise<RecoveryKeyMaterial> {
+  const sodium = getSodium();
+  if (!sodium || !_plaintextDek) {
+    throw new Error('Cannot wrap DEK: encryption not ready');
+  }
+  await sodium.ready;
 
-  if (!res.ok) throw new Error('KMS wrap failed');
+  const salt = sodium.randombytes_buf(sodium.crypto_pwhash_SALTBYTES);
+  const opslimit = sodium.crypto_pwhash_OPSLIMIT_MODERATE;
+  const memlimit = sodium.crypto_pwhash_MEMLIMIT_MODERATE;
 
-  const { wrappedKey, kmsKeyId } = await res.json() as {
-    wrappedKey: string;
-    kmsKeyId: string;
+  const kek = sodium.crypto_pwhash(
+    sodium.crypto_secretbox_KEYBYTES,
+    passphrase,
+    salt,
+    opslimit,
+    memlimit,
+    sodium.crypto_pwhash_ALG_ARGON2ID13,
+  );
+
+  const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
+  const wrapped = sodium.crypto_secretbox_easy(_plaintextDek, nonce, kek);
+  kek.fill(0); // zero the derived KEK — it only ever lives for this call
+
+  return {
+    // Store nonce||ciphertext together — unwrap below splits them back out.
+    wrappedDek: Buffer.concat([Buffer.from(nonce), Buffer.from(wrapped)]).toString('base64'),
+    salt: Buffer.from(salt).toString('base64'),
+    kdfParams: { opslimit, memlimit },
   };
-
-  const material: KeyMaterial = {
-    wrappedKey,
-    kmsKeyId,
-    createdAt: new Date().toISOString(),
-  };
-
-  // Store wrapped key locally in SecureStore (encrypted by OS keychain)
-  await SecureStore.setItemAsync(SECURE_STORE_WRAPPED, JSON.stringify(material));
-
-  return material;
 }
 
 /**
- * Unwrap DEK from KMS via backend. Loads plaintext DEK into memory.
- * Call on app start (after user authenticates).
+ * Unwrap a DEK fetched from Supabase's key_material table using the user's
+ * passphrase. On success the DEK is held in memory AND mirrored into
+ * SecureStore (WHEN_UNLOCKED_THIS_DEVICE_ONLY) so this device behaves like
+ * initLocalDEK() on every subsequent launch — no passphrase re-entry needed
+ * until the Keychain item is cleared (uninstall / wipeLocal).
  */
-export async function loadDEK(apiBase: string, authToken: string): Promise<boolean> {
+export async function unwrapDekWithPassphrase(
+  material: RecoveryKeyMaterial,
+  passphrase: string,
+): Promise<boolean> {
+  const sodium = getSodium();
+  if (!sodium) return false;
+  await sodium.ready;
+
   try {
-    const raw = await SecureStore.getItemAsync(SECURE_STORE_WRAPPED);
-    if (!raw) return false;
+    const combined = Buffer.from(material.wrappedDek, 'base64');
+    const nonce = combined.subarray(0, sodium.crypto_secretbox_NONCEBYTES);
+    const wrapped = combined.subarray(sodium.crypto_secretbox_NONCEBYTES);
+    const salt = Buffer.from(material.salt, 'base64');
 
-    const material = JSON.parse(raw) as KeyMaterial;
+    const kek = sodium.crypto_pwhash(
+      sodium.crypto_secretbox_KEYBYTES,
+      passphrase,
+      salt,
+      material.kdfParams.opslimit,
+      material.kdfParams.memlimit,
+      sodium.crypto_pwhash_ALG_ARGON2ID13,
+    );
 
-    const res = await fetch(`${apiBase}/encryption/unwrap-key`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authToken}`,
-      },
-      body: JSON.stringify({ wrappedKey: material.wrappedKey, kmsKeyId: material.kmsKeyId }),
+    const dek = sodium.crypto_secretbox_open_easy(wrapped, nonce, kek);
+    kek.fill(0);
+    if (!dek) return false; // wrong passphrase or tampered blob
+
+    _plaintextDek = dek;
+    await SecureStore.setItemAsync(SECURE_STORE_KEY, Buffer.from(dek).toString('base64'), {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
     });
-
-    if (!res.ok) return false;
-
-    const { plaintextKey } = await res.json() as { plaintextKey: string };
-    _plaintextDek = Buffer.from(plaintextKey, 'base64');
     return true;
   } catch {
-    return false;
+    return false; // wrong passphrase, corrupted blob, or no libsodium
   }
 }
 
@@ -247,7 +262,7 @@ export function decrypt<T>(payload: EncryptedPayload): T | null {
 
 /**
  * Panic wipe — destroys all local key material and data.
- * Cloud deletion is triggered separately via DELETE /account.
+ * Cloud deletion is triggered separately via Supabase row deletion.
  */
 export async function wipeLocal(): Promise<void> {
   // Zero out in-memory key
@@ -258,7 +273,6 @@ export async function wipeLocal(): Promise<void> {
 
   // Delete from SecureStore
   await SecureStore.deleteItemAsync(SECURE_STORE_KEY).catch(() => {});
-  await SecureStore.deleteItemAsync(SECURE_STORE_WRAPPED).catch(() => {});
 
   // SQLite deletion is handled by sqliteStore.wipeDatabase()
 }

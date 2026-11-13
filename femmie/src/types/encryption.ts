@@ -9,15 +9,6 @@ export interface EncryptedPayload {
   v: 1;
 }
 
-export interface KeyMaterial {
-  /** base64-encoded wrapped (KMS-encrypted) data key */
-  wrappedKey: string;
-  /** KMS key ID used to wrap */
-  kmsKeyId: string;
-  /** ISO timestamp of last key rotation */
-  createdAt: string;
-}
-
 export type SyncStatus = 'local_only' | 'syncing' | 'synced' | 'error';
 
 export interface WipeState {
