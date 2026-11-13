@@ -14,7 +14,9 @@
       "bundleIdentifier": "com.femmie.app",
       "config": {
         "usesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "3",
+      "appleTeamId": "RW75468DH6"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,13 +25,23 @@
       "package": "com.femmie.app"
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
+      ],
+      "./plugins/withResourceBundleDeploymentTarget",
       "expo-notifications",
       "expo-sqlite",
       "expo-secure-store",
       "react-native-health",
       "react-native-health-connect",
       "expo-asset",
-      "react-native-libsodium"
+      "react-native-libsodium",
+      "expo-build-properties"
     ],
     "extra": {
       "eas": {

@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { colors } from '../../theme/colors';
 import { Stepper } from '../common/Stepper';
 import { Step1Privacy } from './Step1Privacy';
-import { Step2Passkey } from './Step2Passkey';
+import { Step2Auth } from './Step2Auth';
 import { Step3CycleDate } from './Step3CycleDate';
 import { Step4CycleLength } from './Step4CycleLength';
 import { Step5QuickSymptoms } from './Step5QuickSymptoms';
@@ -32,7 +32,7 @@ export function OnboardingScreen({ onComplete }: Props) {
       />
 
       {step === 1 && <Step1Privacy onNext={() => setStep(2)} />}
-      {step === 2 && <Step2Passkey onNext={() => setStep(3)} />}
+      {step === 2 && <Step2Auth onNext={() => setStep(3)} />}
       {step === 3 && (
         <Step3CycleDate
           onNext={(date) => {
