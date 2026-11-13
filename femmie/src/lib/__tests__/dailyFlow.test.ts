@@ -19,11 +19,15 @@ const makeLog = (date: string, entries: LogEntry[]): DailyLog => ({
 });
 
 describe('buildFlowSteps', () => {
-  test('period day: flow first, then mood, symptoms, insight', () => {
-    expect(buildFlowSteps({ isLikelyPeriod: true })).toEqual(['flow', 'mood', 'symptoms', 'insight']);
+  test('period day: flow first, then mood, energy, sleep, symptoms, insight', () => {
+    expect(buildFlowSteps({ isLikelyPeriod: true })).toEqual([
+      'flow', 'mood', 'energy', 'sleep', 'symptoms', 'insight',
+    ]);
   });
   test('non-period day: no flow step, mood first', () => {
-    expect(buildFlowSteps({ isLikelyPeriod: false })).toEqual(['mood', 'symptoms', 'insight']);
+    expect(buildFlowSteps({ isLikelyPeriod: false })).toEqual([
+      'mood', 'energy', 'sleep', 'symptoms', 'insight',
+    ]);
   });
 });
 
@@ -32,10 +36,14 @@ describe('assembleEntries', () => {
     const entries = assembleEntries({
       mood: 'low',
       flow: 'medium',
+      energy: 4,
+      sleep: 2,
       symptoms: { cramps: true, headache: false, acne: true },
     });
     expect(entries).toContainEqual({ categoryId: 'mood', value: 'low' });
     expect(entries).toContainEqual({ categoryId: 'menstrual_flow', value: 'medium' });
+    expect(entries).toContainEqual({ categoryId: 'energy', value: 4 });
+    expect(entries).toContainEqual({ categoryId: 'sleep_quality', value: 2 });
     expect(entries).toContainEqual({ categoryId: 'cramps', value: 3 }); // scale → 3
     expect(entries).toContainEqual({ categoryId: 'acne', value: true }); // boolean → true
     expect(entries.some((e) => e.categoryId === 'headache')).toBe(false);

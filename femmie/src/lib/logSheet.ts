@@ -13,7 +13,7 @@ import type { Category, CategoryGroup } from '../types/logging';
  */
 
 /** Section render order, top to bottom. */
-export const GROUP_ORDER: CategoryGroup[] = ['flow', 'symptoms', 'mood', 'lifestyle'];
+export const GROUP_ORDER: CategoryGroup[] = ['flow', 'symptoms', 'mood', 'lifestyle', 'fertility'];
 
 /** Human section titles shown on each card header. */
 export const GROUP_TITLES: Record<CategoryGroup, string> = {
@@ -21,6 +21,7 @@ export const GROUP_TITLES: Record<CategoryGroup, string> = {
   symptoms: 'Symptoms',
   mood: 'Mood',
   lifestyle: 'Lifestyle',
+  fertility: 'Fertility & sex',
 };
 
 export interface CategorySection {

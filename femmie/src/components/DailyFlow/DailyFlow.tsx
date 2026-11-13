@@ -11,7 +11,7 @@ import {
 import { colors } from '../../theme/colors';
 import { CATEGORY_MAP } from '../../data/categories';
 import { useLogStore } from '../../store/logStore';
-import type { DailyLog, MoodValue, FlowValue } from '../../types/logging';
+import type { DailyLog, MoodValue, FlowValue, ScaleValue } from '../../types/logging';
 import {
   buildFlowSteps,
   assembleEntries,
@@ -34,6 +34,22 @@ const FLOWS: { value: FlowValue | 'none'; label: string }[] = [
   { value: 'medium', label: 'Medium' },
   { value: 'heavy', label: 'Heavy' },
   { value: 'none', label: 'No flow' },
+];
+
+const ENERGY: { value: ScaleValue; emoji: string; label: string }[] = [
+  { value: 1, emoji: '🪫', label: 'Empty' },
+  { value: 2, emoji: '😮‍💨', label: 'Low' },
+  { value: 3, emoji: '😌', label: 'Okay' },
+  { value: 4, emoji: '🙂', label: 'Good' },
+  { value: 5, emoji: '⚡', label: 'High' },
+];
+
+const SLEEP: { value: ScaleValue; emoji: string; label: string }[] = [
+  { value: 1, emoji: '😣', label: 'Poor' },
+  { value: 2, emoji: '😕', label: 'Meh' },
+  { value: 3, emoji: '😐', label: 'Okay' },
+  { value: 4, emoji: '😴', label: 'Good' },
+  { value: 5, emoji: '😌', label: 'Great' },
 ];
 
 interface DailyFlowProps {
@@ -138,6 +154,30 @@ export function DailyFlow({
             />
           )}
 
+          {step === 'energy' && (
+            <StepScale
+              question="How's your energy?"
+              options={ENERGY}
+              value={answers.energy}
+              onPick={(energy) => {
+                setAnswers((a) => ({ ...a, energy }));
+                next();
+              }}
+            />
+          )}
+
+          {step === 'sleep' && (
+            <StepScale
+              question="How did you sleep?"
+              options={SLEEP}
+              value={answers.sleep}
+              onPick={(sleep) => {
+                setAnswers((a) => ({ ...a, sleep }));
+                next();
+              }}
+            />
+          )}
+
           {step === 'symptoms' && (
             <StepSymptoms
               ids={quickSymptomIds}
@@ -178,6 +218,41 @@ function StepMood({ value, onPick }: { value?: MoodValue; onPick: (m: MoodValue)
             >
               <Text style={styles.moodEmoji}>{m.emoji}</Text>
               <Text style={styles.moodLabel}>{m.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function StepScale({
+  question,
+  options,
+  value,
+  onPick,
+}: {
+  question: string;
+  options: { value: ScaleValue; emoji: string; label: string }[];
+  value?: ScaleValue;
+  onPick: (v: ScaleValue) => void;
+}) {
+  return (
+    <View>
+      <Text style={styles.question}>{question}</Text>
+      <View style={styles.moodRow}>
+        {options.map((o) => {
+          const active = value === o.value;
+          return (
+            <Pressable
+              key={o.value}
+              onPress={() => onPick(o.value)}
+              style={[styles.moodItem, active && styles.moodItemActive]}
+              accessibilityRole="button"
+              accessibilityLabel={o.label}
+            >
+              <Text style={styles.moodEmoji}>{o.emoji}</Text>
+              <Text style={styles.moodLabel}>{o.label}</Text>
             </Pressable>
           );
         })}
