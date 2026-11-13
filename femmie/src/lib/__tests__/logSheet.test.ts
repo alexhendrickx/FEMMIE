@@ -26,6 +26,7 @@ const SAMPLE: Category[] = [
   cat('headache', 'Headache', 'symptoms'),
   cat('mood', 'Mood', 'mood'),
   cat('sleep_hours', 'Sleep hours', 'lifestyle'),
+  cat('bbt', 'Basal temp', 'fertility'),
 ];
 
 describe('filterCategories', () => {
@@ -67,6 +68,7 @@ describe('groupCategories', () => {
       GROUP_TITLES.symptoms,
       GROUP_TITLES.mood,
       GROUP_TITLES.lifestyle,
+      GROUP_TITLES.fertility,
     ]);
   });
 

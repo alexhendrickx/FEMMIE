@@ -35,6 +35,7 @@ export const DEFAULT_QUICK_SYMPTOM_IDS = [
 export const PICKABLE_CATEGORIES: Category[] = CATEGORIES.filter(
   (c) =>
     c.group !== 'flow' &&
+    c.group !== 'fertility' &&
     c.id !== 'mood' &&
     (c.inputType === 'boolean' || c.inputType === 'scale'),
 );
@@ -48,6 +49,7 @@ const GROUP_LABELS: Record<CategoryGroup, string> = {
   mood: 'Mind & mood',
   lifestyle: 'Energy & sleep',
   flow: 'Flow',
+  fertility: 'Fertility & sex',
 };
 
 export interface SymptomGroup {
