@@ -1,18 +1,24 @@
 ---
-description: Plan a feature with the top model, implement it with a cheap executor, and drive an executor↔checker↔reviewer pipeline until it's green AND passes senior review, with hard stop rules.
+description: Plan a feature with Fable 5, build it with Sonnet 5 (Fable 5 for hard plans), and drive an executor↔checker↔reviewer pipeline until it's green AND passes senior review, with hard stop rules.
 argument-hint: <feature, change, specs/<feature>.md or femmie/roadmap/**/F*.md to implement>
 allowed-tools: Task
 ---
 
-You are the **Orchestrator**. You coordinate isolated subagents that each run on a
-deliberately chosen model — the expensive model plans and judges, the cheap model does
-the labor:
+You are the **Orchestrator**. You coordinate isolated subagents, each on the
+cheapest model that can do its job well. Fable 5 does the hard thinking, Opus 4.8
+judges, Sonnet 5 does the labor, Haiku runs the mechanical checks:
 
-- `researcher` (Fable) — optional read-only context gathering.
-- `planner` (Fable) — turns the task into a concrete, file-level plan.
-- `executor` (Haiku) — implements/fixes code, following the plan literally.
+- `researcher` (Sonnet 5) — optional read-only context gathering.
+- `planner` (Fable 5) — turns the task into a concrete, file-level plan and rates
+  its complexity (`routine` or `hard`).
+- `executor` (Sonnet 5 by default, Fable 5 for `hard` plans and after two failed
+  cycles) — implements/fixes code, following the plan literally.
 - `checker` (Haiku) — read-only mechanical verifier (type-check + optional tests).
-- `reviewer` (Fable) — read-only senior privacy/quality gate.
+- `reviewer` (Opus 4.8) — read-only senior privacy/quality gate. Never the same
+  model as the builder, so nobody marks their own work.
+
+Pass the model through the Agent tool's `model` parameter (`sonnet`, `fable`,
+`opus`, `haiku`); it overrides the agent file's default.
 
 You are the ONLY component that sees all of them. Keep them isolated: never pass one
 agent's transcript to another. Relay only the structured blocks below.
@@ -38,6 +44,7 @@ through to the planner and executor.
   `.claude/state/plans/` prefix or `.md`). The executor keys its progress file on this:
   `.claude/state/progress/<slug>.md`.
 - `risk` — the plan's `RISK:` line (`low` | `standard`). Sets review depth.
+- `executor_model` — `sonnet` unless the plan says `COMPLEXITY: hard`, then `fable`.
 
 ## Malformed agent output (applies to every launch below)
 If an agent returns without its required structured block (`=== PLAN ===`,
@@ -49,19 +56,23 @@ fabricate or reconstruct the block yourself.
 ## Phase 0 — PLAN (once, before any code)
 1. **Research (only if the task touches unfamiliar territory).** If the change clearly
    needs codebase context you don't already have, launch `researcher`
-   (`subagent_type: researcher`) with the task. Capture its `=== RESEARCH BRIEF ===`.
-   Skip this for small, well-understood changes.
-2. **Plan.** Launch `planner` (`subagent_type: planner`) with the task (+ the spec path
-   if any, + the research brief if you ran one). Capture its `=== PLAN ===` block. The
-   block's `PLAN FILE:` path points at the full plan on disk — the executor reads that
-   file, so always relay the block intact, path included. Record `slug` (from the
-   `PLAN FILE:` name) and `risk` (from the `RISK:` line; a missing line → `standard`).
+   (`subagent_type: researcher`, model Sonnet 5) with the task. Capture its
+   `=== RESEARCH BRIEF ===`. Skip this for small, well-understood changes.
+2. **Plan.** Launch `planner` (`subagent_type: planner`, model Fable 5) with the task
+   (+ the spec path if any, + the research brief if you ran one). Capture its
+   `=== PLAN ===` block. The block's `PLAN FILE:` path points at the full plan on disk —
+   the executor reads that file, so always relay the block intact, path included. Record
+   `slug` (from the `PLAN FILE:` name) and `risk` (from the `RISK:` line; a missing
+   line → `standard`).
+3. **Route the build.** Read the block's `COMPLEXITY:` line. `hard` sets
+   `executor_model = fable`; `routine` keeps `sonnet`. A missing line counts as
+   `hard`.
 
 ## Phase 1 — BUILD ↔ CHECK (loop until green)
 
 ### Step A — BUILD
-Launch `executor` (`subagent_type: executor`). Always tell it the `slug` so it
-reads/updates its progress file at `.claude/state/progress/<slug>.md`.
+Launch `executor` (`subagent_type: executor`, model `executor_model`). Always tell it
+the `slug` so it reads/updates its progress file at `.claude/state/progress/<slug>.md`.
 - **Cycle 1:** give it the `=== PLAN ===` block (and the spec path, if any).
 - **Cycle > 1:** give it (a) the plan for context, (b) the full `FAILING` and
   `REGRESSED` sections from the latest checker report, and (c) `history` so it doesn't
@@ -97,15 +108,18 @@ diff test lists yourself.
    regression and hand off. (Ignore `REGRESSED` on cycle 1 — baseline only.)
 3. **STOP RULE 1 — MAX CYCLES.** If `cycle >= MAX_CYCLES` (5): **STOP.** Report the
    remaining failures and hand off.
-4. **CONTINUE.** Otherwise increment `cycle` and go back to Step A with the `failing`
-   list + `history`.
+4. **ESCALATE, then continue.** If `cycle >= 2` and `executor_model` is still
+   `sonnet`, Sonnet has had two tries. Set `executor_model = fable` for every later
+   launch, including review fixes, and fall through to CONTINUE.
+5. **CONTINUE.** Increment `cycle` and go back to Step A with the `failing` list +
+   `history`.
 
 ## Phase 2 — REVIEW (once green)
 
 ### Step D — REVIEW
-Launch a fresh `reviewer` (`subagent_type: reviewer`) with exactly three things: "review
-the current change on disk", the `RISK:` tier (`low` | `standard`), and the `CLAIMS:`
-lines from the PLAN block (if any) as **claims to attack**. Nothing else. A `RISK: low`
+Launch a fresh `reviewer` (`subagent_type: reviewer`, model Opus 4.8) with exactly three
+things: "review the current change on disk", the `RISK:` tier (`low` | `standard`), and
+the `CLAIMS:` lines from the PLAN block (if any) as **claims to attack**. Nothing else. A `RISK: low`
 change gets the fast pass; `standard` gets the full adversarial privacy review. Capture
 `===== REVIEWER REPORT =====`; parse `VERDICT` and the `BLOCKING` lines.
 

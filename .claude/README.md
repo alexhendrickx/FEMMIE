@@ -1,8 +1,10 @@
 # Claude agent system — research → plan → execute → check → review, until the goal is met
 
-A spec-driven pipeline of **isolated** subagents where the **expensive model plans and
-judges** and a **cheap model does the labor** — senior-team results without burning your
-usage limit on your best model. Ported from the Factuurt/Datewatch orchestration system
+A spec-driven pipeline of **isolated** subagents. Each role runs on the cheapest model
+that does it well: Fable 5 for the hard thinking, Opus 4.8 for judging, Sonnet 5 for the
+labor, Haiku for mechanical checks. That keeps your usage limit stretching across many
+more pipeline runs, and the independent gates mean nobody marks their own work. Ported
+from the Factuurt/Datewatch orchestration system
 and adapted to **Femmie's** stack (React Native + Expo app, Fastify backend) and its
 one non-negotiable: **this is a privacy-first, end-to-end-encrypted health app — a data
 leak is the end of the product, so privacy is the review's crown jewel.**
@@ -11,19 +13,30 @@ Project conventions the agents rely on (layout, the privacy rules, the gate comm
 the test-runner gap) live in the root `CLAUDE.md` — keep that current or every agent
 plans against stale assumptions.
 
-## The model split (why it's cheap)
+## The model split
 
-| Agent | Model | Role |
-|------|------|------|
-| `researcher` | **Fable 5** | Read-only. Gathers codebase/web context before planning. Optional. |
-| `planner` | **Fable 5** | Turns the task/spec into a concrete, file-level plan. Writes a plan doc, no source. |
-| `executor` | **Haiku** | Implements the plan **and its tests**, literally. The grunt work. |
-| `checker` | **Haiku** | Read-only. Runs `tsc --noEmit` (+ tests when a runner exists), reports compact pass/fail/regressions. |
-| `reviewer` | **Fable 5** | Read-only senior gate: **privacy/encryption first**, then reuse, coverage. Runs after green. |
-| `goal-checker` | **Haiku** | Read-only. Independent judge of whether your success criteria are met. |
+| Agent | Model | Effort | Role |
+|------|------|------|------|
+| `researcher` | **Sonnet 5** | medium | Read-only. Gathers codebase/web context before planning. Optional. |
+| `planner` | **Fable 5** | xhigh | Turns the task/spec into a file-level plan, rates it `routine` or `hard`. Writes a plan doc, no source. |
+| `executor` | **Sonnet 5**, or **Fable 5** | high | Implements the plan **and its tests**, literally. Fable 5 when the plan is `hard` or after two failed cycles. |
+| `checker` | **Haiku** | low | Read-only. Runs `tsc --noEmit` (+ tests when a runner exists), reports compact pass/fail/regressions. |
+| `reviewer` | **Opus 4.8** | high | Read-only senior gate: **privacy/encryption first**, then reuse, coverage. Runs after green. |
+| `goal-checker` | **Opus 4.8** | high | Read-only. Independent judge of whether your success criteria are met. |
 
-Strategy (planner) and quality/privacy judgement (reviewer) get Fable 5. Everything
-mechanical runs on Haiku. Model pins live in each `agents/*.md` frontmatter.
+**Routing rule.** Spend Fable 5 where a wrong decision is expensive: the plan, and any
+build Sonnet couldn't land in two tries. Spend Opus 4.8 on judgement, where a missed
+privacy hole or an early "done" costs the most. Everything else (reading, typing,
+running commands) runs on Sonnet 5 or Haiku. The orchestrator passes the model per
+launch through the Agent tool's `model` parameter, which beats the `model:` line in the
+agent file. Each agent also has a `maxTurns` cap (researcher 40, planner 50, executor
+80, checker 20, reviewer 50, goal-checker 30) so one stuck run can't burn the quota.
+
+**Why the planner decides.** `COMPLEXITY: hard` means the change handles health or
+personal data, touches encryption, secure storage, auth, or sync, changes the schema or
+adds a migration, spans 8 or more files, or has no pattern to copy. The planner is the
+strongest model and has read the code, so it makes the call instead of the orchestrator
+guessing. A missing rating counts as `hard`.
 
 ## The commands
 
@@ -110,6 +123,7 @@ health-data behaviour once a runner exists" as blocking.
 
 | Rule | Where | Effect |
 |------|-------|--------|
+| Escalate after cycle 2 | build-loop | Sonnet executor still red → Fable executor takes over |
 | Max 5 build cycles | build-loop | not green after 5 → human |
 | Regression | build-loop | a fix breaks a passing test → immediate stop |
 | Max 2 review rounds | build-loop | reviewer still blocks after 2 fixes → human |
@@ -125,8 +139,9 @@ but only with written justification in its change summary.
 ## The guarantees
 1. **Nobody marks their own homework.** The executor self-verifies (type-check + its own
    tests) but never owns the verdict — the checker is the sole authority on the full
-   gate, the reviewer can't edit, the goal-checker is a separate model. Separate context
-   windows; the orchestrator relays only structured blocks.
+   gate, the reviewer can't edit, and reviewer and goal-checker run on Opus 4.8, never on
+   the model that built the code (Sonnet 5 or Fable 5). Separate context windows; the
+   orchestrator relays only structured blocks.
 2. **Quality compounds.** Once a runner exists, new behaviour ships with a test and the
    reviewer blocks on untested new behaviour.
 3. **A fix can't silently break something else.** The manifest diff catches regressions
@@ -141,7 +156,8 @@ framework-free and testable) is what keeps iOS/Android and backend portable; the
 and reviewer both push logic there.
 
 ## Tuning
-- Model pins → each `agents/*.md` frontmatter (`model:` line).
+- Model, effort, and turn caps → each `agents/*.md` frontmatter (`model:`, `effort:`,
+  `maxTurns:`). The orchestrator's per-launch `model` overrides the pin.
 - Cycle/round/iteration ceilings → `commands/build-loop.md` and `commands/goal.md`.
 - When the test runner lands, flip the checker from type-check-only to the full gate
   (it already auto-detects; no edit needed).

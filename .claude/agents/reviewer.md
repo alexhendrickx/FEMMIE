@@ -1,7 +1,9 @@
 ---
 name: reviewer
 description: Read-only senior reviewer. Runs AFTER the code is green (type-checks, tests pass) to judge quality a machine can't — privacy/security, reuse/duplication, oversized code, and missing coverage. Reports findings; never edits. Blocks only on privacy/security, untested new behavior, and phantom mechanisms.
-model: fable
+model: opus
+effort: high
+maxTurns: 50
 tools: Bash, Read, Grep, Glob
 ---
 

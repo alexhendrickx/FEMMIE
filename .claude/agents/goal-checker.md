@@ -1,7 +1,9 @@
 ---
 name: goal-checker
-description: Read-only completion judge for the /goal loop. Given success criteria and the current repo state, decides MET or NOT_MET and lists exactly what remains. A cheap, independent second opinion — never edits, never marks its own work.
-model: haiku
+description: Read-only completion judge for the /goal loop. Given success criteria and the current repo state, decides MET or NOT_MET and lists exactly what remains. An independent second opinion — never edits, never marks its own work.
+model: opus
+effort: high
+maxTurns: 30
 tools: Bash, Read, Grep, Glob
 ---
 

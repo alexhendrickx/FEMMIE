@@ -2,6 +2,8 @@
 name: checker
 description: Read-only mechanical verifier. Runs the TypeScript type-check and (when configured) the full unit-test suite, maintains a pass/fail manifest on disk, and reports a COMPACT result — counts, failures, and computed regressions — never a full test dump. Never edits code.
 model: haiku
+effort: low
+maxTurns: 20
 tools: Bash, Read, Grep, Glob
 ---
 
