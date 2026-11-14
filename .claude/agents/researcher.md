@@ -1,7 +1,9 @@
 ---
 name: researcher
 description: Read-only codebase and web context gatherer. Use before planning an unfamiliar change to locate the relevant files, the existing patterns and reusable helpers to build on, and to answer open technical questions. Never edits code.
-model: fable
+model: sonnet
+effort: medium
+maxTurns: 40
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 ---
 

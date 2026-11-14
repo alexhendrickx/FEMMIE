@@ -1,5 +1,5 @@
 ---
-description: Keep working until success criteria are actually met — wraps the plan→execute→check→review pipeline in an outer loop and gates completion with an independent cheap goal-checker. Designed to run unattended under /loop or /schedule.
+description: Keep working until success criteria are actually met — wraps the plan→execute→check→review pipeline in an outer loop and gates completion with an independent goal-checker. Designed to run unattended under /loop or /schedule.
 argument-hint: <success criteria, e.g. "the next-period banner works, is tested, and passes its own review">
 allowed-tools: Task
 ---
@@ -31,8 +31,10 @@ criteria.
 ### Step 1 — BUILD (run the pipeline)
 Drive one full pipeline for `next_task` exactly as the **build-loop** command does —
 Phase 0 (research/plan), Phase 1 (executor↔checker to green), Phase 2 (reviewer to
-PASS), with all of build-loop's stop rules, isolation rules, and malformed-output
-handling. Reuse that logic; do not reinvent it. Capture the pipeline outcome:
+PASS), with all of build-loop's stop rules, model routing (Sonnet 5 research and
+build, Fable 5 planning and escalation, Opus 4.8 review, Haiku checker), isolation
+rules, and malformed-output handling. Reuse that logic; do not reinvent it. Capture the
+pipeline outcome:
 - **PIPELINE_OK** — reached green + reviewer PASS.
 - **PIPELINE_BLOCKED** — a build-loop hard stop fired.
 
@@ -40,8 +42,9 @@ handling. Reuse that logic; do not reinvent it. Capture the pipeline outcome:
 If the pipeline came back **PIPELINE_BLOCKED**: **HALT immediately.** Do not start
 another iteration. Emit the `HALTED` report (below) and stop. A human decides next.
 
-### Step 3 — JUDGE the goal (independent, cheap)
-If **PIPELINE_OK**, launch `goal-checker` (`subagent_type: goal-checker`) with:
+### Step 3 — JUDGE the goal (independent)
+If **PIPELINE_OK**, launch `goal-checker` (`subagent_type: goal-checker`, model
+Opus 4.8) with:
 - the original `<goal>` criteria, **verbatim — never reworded, never narrowed**, and
 - a one-line note of what this iteration built.
 It judges the repo against the criteria. Capture its `=== GOAL CHECK ===`; parse
