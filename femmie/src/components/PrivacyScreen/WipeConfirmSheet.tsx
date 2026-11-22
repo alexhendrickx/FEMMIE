@@ -42,8 +42,8 @@ export function WipeConfirmSheet({ visible, onConfirm, onCancel }: WipeConfirmSh
 
         <Text style={styles.title}>Delete everything?</Text>
         <Text style={styles.body}>
-          This permanently erases your cycle history, health data, and settings from this device
-          and our servers. There is no undo.
+          This permanently deletes your account and erases your cycle history, health data, and
+          settings from this device and our servers. There is no undo.
         </Text>
 
         <View style={styles.actions}>

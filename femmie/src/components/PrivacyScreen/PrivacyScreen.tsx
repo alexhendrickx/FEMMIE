@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Switch,
@@ -8,12 +9,9 @@ import {
   View,
 } from 'react-native';
 import { WipeConfirmSheet } from './WipeConfirmSheet';
-import { wipeLocal } from '../../services/encryption';
-import { wipeDatabase } from '../../services/sqlite';
+import { deleteAccountAndData } from '../../services/accountDeletion';
 import { useEncryptionStore } from '../../store/encryptionStore';
-import { useLogStore } from '../../store/logStore';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../services/supabase';
 import { colors } from '../../theme/colors';
 
 export function PrivacyScreen() {
@@ -37,26 +35,16 @@ export function PrivacyScreen() {
   const handleWipeConfirm = useCallback(async () => {
     setWipeSheetOpen(false);
     setWiping(true);
-
-    // 1. Clear the persisted log envelope FIRST: clearing triggers an async
-    //    encrypted re-write that calls initLocalDEK(), which would mint a NEW
-    //    keychain key if it ran after wipeLocal(). Clearing before the key is
-    //    destroyed means the wipe ends with no DEK in the keychain.
-    useLogStore.getState().clearAll();
-    await useLogStore.persist.clearStorage();
-
-    // 2. Destroy local data + key
-    await wipeLocal();
-    await wipeDatabase();
-
-    // 3. Delete this user's rows from Supabase (fire-and-forget — local is gone)
-    if (session) {
-      const userId = session.userId;
-      supabase.from('logs').delete().eq('user_id', userId).then(() => {}, () => {});
-      supabase.from('key_material').delete().eq('user_id', userId).then(() => {}, () => {});
+    try {
+      await deleteAccountAndData(session !== null);
+    } catch {
+      Alert.alert(
+        'Nothing was deleted',
+        "We couldn't reach the server to delete your account. Check your connection and try again.",
+      );
+    } finally {
+      setWiping(false);
     }
-
-    setWiping(false);
   }, [session]);
 
   const syncLabel =
