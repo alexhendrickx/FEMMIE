@@ -1,5 +1,6 @@
 import type { DailyLog, EntryValue } from '../types/logging';
 import { CATEGORY_MAP } from '../data/categories';
+import { symptomLabel } from './correlation';
 
 /**
  * Pure, framework-free logic for the History "Week / Month / List" view (UX decision #9).
@@ -82,7 +83,7 @@ export function summarizeDay(log: DailyLog): DaySummaryItem[] {
     return {
       categoryId: entry.categoryId,
       icon: cat?.icon ?? '•',
-      label: cat?.label ?? entry.categoryId,
+      label: symptomLabel(entry.categoryId),
       valueLabel: formatEntryValue(entry.value),
     };
   });

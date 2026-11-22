@@ -19,7 +19,7 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: jest.fn(async () => {}),
 }));
 
-import { useLogStore } from '../logStore';
+import { useLogStore, migrateLogState } from '../logStore';
 
 async function flushPersist(): Promise<void> {
   for (let i = 0; i < 20 && !mockMem.has('femmie-logs'); i++) {
@@ -71,5 +71,58 @@ describe('clearAll (privacy wipe)', () => {
     expect(s.reminderEnabled).toBe(false);
     expect(s.phaseContentMuted).toBe(false);
     expect(s.cycleLengthPref).toBe(28);
+  });
+});
+
+describe('upgrade from a pre-ritual build (persist v0 → v1)', () => {
+  const legacyState = {
+    logs: {
+      '2026-10-01': {
+        date: '2026-10-01',
+        cycleDay: 3,
+        savedAt: '2026-10-01T20:00:00.000Z',
+        entries: [
+          { categoryId: 'menstrual_flow', value: 'medium' },
+          { categoryId: 'cervical_mucus', value: 'creamy' },
+        ],
+      },
+    },
+    shortcuts: [{ id: 'shortcut_0', label: 'x', entries: [], usageCount: 3 }],
+    reminderEnabled: true,
+    reminderTime: { hour: 21, minute: 30 },
+    cycleLengthPref: 31,
+    quickSymptomIds: ['cramps'],
+    correlationFeedback: { cramps: 'helpful' },
+    phaseContentMuted: true,
+  };
+
+  it('keeps logs and prefs, drops removed fields, purges deleted stores', async () => {
+    mockMem.set('femmie-logs', JSON.stringify({ state: legacyState, version: 0 }));
+    mockMem.set('femmie-mood', '{"ciphertext":"a","nonce":"b"}');
+    mockMem.set('femmie-pain', '{"ciphertext":"a","nonce":"b"}');
+    mockMem.set('femmie-tags', '{"ciphertext":"a","nonce":"b"}');
+
+    await useLogStore.persist.rehydrate();
+
+    const s = useLogStore.getState() as unknown as Record<string, unknown>;
+    expect(Object.keys(s.logs as object)).toEqual(['2026-10-01']);
+    expect(s.reminderEnabled).toBe(true);
+    expect(s.cycleLengthPref).toBe(31);
+    expect(s.phaseContentMuted).toBe(true);
+    for (const gone of ['shortcuts', 'reminderTime', 'quickSymptomIds', 'correlationFeedback']) {
+      expect(s).not.toHaveProperty(gone);
+    }
+    expect(mockMem.has('femmie-mood')).toBe(false);
+    expect(mockMem.has('femmie-pain')).toBe(false);
+    expect(mockMem.has('femmie-tags')).toBe(false);
+  });
+
+  it('migrateLogState fills defaults for a missing or empty blob', () => {
+    expect(migrateLogState(undefined)).toEqual({
+      logs: {},
+      reminderEnabled: false,
+      cycleLengthPref: 28,
+      phaseContentMuted: false,
+    });
   });
 });

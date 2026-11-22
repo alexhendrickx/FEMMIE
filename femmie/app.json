@@ -37,11 +37,16 @@
       "expo-notifications",
       "expo-sqlite",
       "expo-secure-store",
-      "react-native-health",
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "Femmie reads your sleep, heart rate variability, resting heart rate, weight, workouts and cycle data from Apple Health to show how they relate to your cycle. This data stays encrypted on your device.",
+          "healthUpdatePermission": "Femmie saves the period days you log to Apple Health so your cycle history stays in one place."
+        }
+      ],
       "react-native-health-connect",
       "expo-asset",
-      "react-native-libsodium",
-      "expo-build-properties"
+      "react-native-libsodium"
     ],
     "extra": {
       "eas": {
