@@ -123,6 +123,11 @@ describe('upgrade from a pre-ritual build (persist v0 → v1)', () => {
       reminderEnabled: false,
       cycleLengthPref: 28,
       phaseContentMuted: false,
+      onboardingDone: false,
     });
+  });
+
+  it('treats an upgrading user with logs as already onboarded', () => {
+    expect(migrateLogState({ logs: legacyState.logs }).onboardingDone).toBe(true);
   });
 });

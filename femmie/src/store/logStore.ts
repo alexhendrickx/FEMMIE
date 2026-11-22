@@ -24,17 +24,20 @@ async function purgeLegacyStores(): Promise<void> {
 
 type PersistedLogState = Pick<
   LogState,
-  'logs' | 'reminderEnabled' | 'cycleLengthPref' | 'phaseContentMuted'
+  'logs' | 'reminderEnabled' | 'cycleLengthPref' | 'phaseContentMuted' | 'onboardingDone'
 >;
 
 /** Keep only the fields the current store owns; fill missing ones with defaults. */
 export function migrateLogState(persisted: unknown): PersistedLogState {
   const p = (persisted ?? {}) as Partial<PersistedLogState>;
+  const logs = p.logs ?? {};
   return {
-    logs: p.logs ?? {},
+    logs,
     reminderEnabled: p.reminderEnabled ?? false,
     cycleLengthPref: p.cycleLengthPref ?? 28,
     phaseContentMuted: p.phaseContentMuted ?? false,
+    // Builds before v1 never stored this; anyone with a log has been through onboarding.
+    onboardingDone: p.onboardingDone ?? Object.keys(logs).length > 0,
   };
 }
 
@@ -50,12 +53,15 @@ interface LogState {
   cycleLengthPref: number;
   /** Hides the Today's-outlook card on Home. Persisted through the same encrypted boundary. */
   phaseContentMuted: boolean;
+  /** Persisted so a cold start goes straight to Today instead of replaying onboarding. */
+  onboardingDone: boolean;
 
   saveLog: (log: Omit<DailyLog, 'savedAt'>) => void;
   hasLoggedToday: () => boolean;
   setReminder: (enabled: boolean) => void;
   setCycleLengthPref: (days: number) => void;
   setPhaseContentMuted: (muted: boolean) => void;
+  completeOnboarding: () => void;
   /** Reset to factory state — the privacy wipe calls this BEFORE destroying the DEK. */
   clearAll: () => void;
 }
@@ -67,6 +73,7 @@ export const useLogStore = create<LogState>()(
       reminderEnabled: false,
       cycleLengthPref: 28,
       phaseContentMuted: false,
+      onboardingDone: false,
 
       saveLog(log) {
         const savedAt = new Date().toISOString();
@@ -90,12 +97,17 @@ export const useLogStore = create<LogState>()(
         set({ phaseContentMuted: muted });
       },
 
+      completeOnboarding() {
+        set({ onboardingDone: true });
+      },
+
       clearAll() {
         set({
           logs: {},
           reminderEnabled: false,
           cycleLengthPref: 28,
           phaseContentMuted: false,
+          onboardingDone: false,
         });
       },
     }),
@@ -109,6 +121,7 @@ export const useLogStore = create<LogState>()(
         reminderEnabled: s.reminderEnabled,
         cycleLengthPref: s.cycleLengthPref,
         phaseContentMuted: s.phaseContentMuted,
+        onboardingDone: s.onboardingDone,
       }),
       migrate: async (persisted, version) => {
         if (version < 1) await purgeLegacyStores();
