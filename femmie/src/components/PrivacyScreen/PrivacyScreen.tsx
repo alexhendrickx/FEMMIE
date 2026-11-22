@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { WipeConfirmSheet } from './WipeConfirmSheet';
-import { deleteAccountAndData } from '../../services/accountDeletion';
+import { AccountDeletionError, deleteAccountAndData } from '../../services/accountDeletion';
 import { useEncryptionStore } from '../../store/encryptionStore';
 import { useAuth } from '../../context/AuthContext';
 import { colors } from '../../theme/colors';
@@ -37,11 +37,18 @@ export function PrivacyScreen() {
     setWiping(true);
     try {
       await deleteAccountAndData(session !== null);
-    } catch {
-      Alert.alert(
-        'Nothing was deleted',
-        "We couldn't reach the server to delete your account. Check your connection and try again.",
-      );
+    } catch (e) {
+      if (e instanceof AccountDeletionError) {
+        Alert.alert(
+          'Nothing was deleted',
+          "We couldn't reach the server to delete your account. Check your connection and try again.",
+        );
+      } else {
+        Alert.alert(
+          'Account deleted',
+          "Your account and synced data are gone, but some data on this phone couldn't be removed. Delete the Femmie app to remove it.",
+        );
+      }
     } finally {
       setWiping(false);
     }

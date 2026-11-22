@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
   SafeAreaView,
   View,
@@ -18,7 +18,7 @@ import { TodayOutlookCard } from './src/components/TodayOutlook';
 import { DailyFlow } from './src/components/DailyFlow';
 import { YouSheet } from './src/components/You';
 import { CalendarModal } from './src/components/Calendar';
-import { useLogStore } from './src/store/logStore';
+import { useLogStore, isLogStoreHydrationSettled, onLogStoreHydrationSettled } from './src/store/logStore';
 import { colors } from './src/theme/colors';
 import {
   extractPeriodStarts,
@@ -126,8 +126,7 @@ function AppGate() {
   const completeOnboarding = useLogStore((s) => s.completeOnboarding);
   // The encrypted store hydrates asynchronously; wait for it so a returning user
   // never sees a flash of onboarding.
-  const [hydrated, setHydrated] = useState(() => useLogStore.persist.hasHydrated());
-  useEffect(() => useLogStore.persist.onFinishHydration(() => setHydrated(true)), []);
+  const hydrated = useSyncExternalStore(onLogStoreHydrationSettled, isLogStoreHydrationSettled);
   const saveLog = useLogStore((s) => s.saveLog);
   const setCycleLengthPref = useLogStore((s) => s.setCycleLengthPref);
 

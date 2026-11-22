@@ -10,10 +10,12 @@ import { supabase } from './supabase';
 import { wipeLocal } from './encryption';
 import { wipeDatabase } from './sqlite';
 import { cancelBedtimeReminder } from '../utils/notifications';
+import { encryptedWritesSettled } from './secureStorage';
 import { useLogStore, LEGACY_STORE_KEYS } from '../store/logStore';
 import { useHealthStore } from '../store/healthStore';
 import { useEncryptionStore } from '../store/encryptionStore';
 
+/** The server refused or was unreachable. Nothing was deleted anywhere. */
 export class AccountDeletionError extends Error {
   constructor() {
     super('Account deletion failed on the server; nothing was deleted');
@@ -21,10 +23,20 @@ export class AccountDeletionError extends Error {
   }
 }
 
+/** The account is gone, but part of the on-device cleanup failed. */
+export class LocalWipeError extends Error {
+  constructor() {
+    super('Account deleted, but some on-device data could not be removed');
+    this.name = 'LocalWipeError';
+  }
+}
+
 /**
  * @param signedIn whether there is a server account to delete. Without one,
  *   only the device is wiped.
  * @throws AccountDeletionError when the server delete fails. Local data is intact.
+ * @throws LocalWipeError when the account is gone but a device step failed.
+ *   Every remaining step still runs, and the session is always dropped.
  */
 export async function deleteAccountAndData(signedIn: boolean): Promise<void> {
   if (signedIn) {
@@ -34,25 +46,47 @@ export async function deleteAccountAndData(signedIn: boolean): Promise<void> {
     if (error) throw new AccountDeletionError();
   }
 
-  await cancelBedtimeReminder();
+  // Past this point the account no longer exists, so every step runs even if
+  // an earlier one fails.
+  let failed = false;
+  const step = async (run: () => Promise<unknown>): Promise<void> => {
+    try {
+      await run();
+    } catch {
+      failed = true;
+    }
+  };
 
-  // Clear the log envelope BEFORE destroying the key: clearing triggers an
-  // encrypted re-write that calls initLocalDEK(), which would mint a NEW
-  // keychain key if it ran after wipeLocal().
-  useLogStore.getState().clearAll();
-  await useLogStore.persist.clearStorage();
+  await step(cancelBedtimeReminder);
 
-  useHealthStore.setState(useHealthStore.getInitialState());
-  await useHealthStore.persist.clearStorage();
-  useEncryptionStore.setState(useEncryptionStore.getInitialState());
-  await useEncryptionStore.persist.clearStorage();
-  await Promise.all(LEGACY_STORE_KEYS.map((k) => AsyncStorage.removeItem(k).catch(() => {})));
+  // Reset the log store and let its encrypted re-write land BEFORE the key is
+  // destroyed: a write still in flight would call initLocalDEK() afterwards
+  // and mint a fresh key in the keychain.
+  await step(async () => {
+    useLogStore.getState().clearAll();
+    await encryptedWritesSettled();
+    await useLogStore.persist.clearStorage();
+  });
+  await step(async () => {
+    useHealthStore.setState(useHealthStore.getInitialState());
+    await useHealthStore.persist.clearStorage();
+  });
+  await step(async () => {
+    useEncryptionStore.setState(useEncryptionStore.getInitialState());
+    await useEncryptionStore.persist.clearStorage();
+  });
+  await step(() => Promise.all(LEGACY_STORE_KEYS.map((k) => AsyncStorage.removeItem(k))));
 
-  await wipeLocal();
-  await wipeDatabase();
+  await step(wipeLocal);
+  await step(wipeDatabase);
 
   if (signedIn) {
     // The server session died with the account; this drops the local tokens.
-    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    await step(async () => {
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      if (error) throw error;
+    });
   }
+
+  if (failed) throw new LocalWipeError();
 }

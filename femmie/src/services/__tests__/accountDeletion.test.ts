@@ -20,11 +20,17 @@ jest.mock('../secureStorage', () => ({
     setItem: async (k: string, v: string) => void mockMem.set(k, v),
     removeItem: async (k: string) => void mockMem.delete(k),
   },
+  encryptedWritesSettled: async () => {},
 }));
 jest.mock('../supabase', () => ({
   supabase: {
     rpc: (...args: unknown[]) => mockRpc(...args),
-    auth: { signOut: jest.fn(async () => void mockCalls.push('signOut')) },
+    auth: {
+      signOut: jest.fn(async () => {
+        mockCalls.push('signOut');
+        return { error: null };
+      }),
+    },
   },
 }));
 jest.mock('../encryption', () => ({
@@ -37,7 +43,8 @@ jest.mock('../../utils/notifications', () => ({
   cancelBedtimeReminder: jest.fn(async () => void mockCalls.push('cancelReminder')),
 }));
 
-import { deleteAccountAndData, AccountDeletionError } from '../accountDeletion';
+import { deleteAccountAndData, AccountDeletionError, LocalWipeError } from '../accountDeletion';
+import { wipeDatabase } from '../sqlite';
 import { useLogStore } from '../../store/logStore';
 import { useHealthStore } from '../../store/healthStore';
 import { useEncryptionStore } from '../../store/encryptionStore';
@@ -90,6 +97,18 @@ it('success: deletes the account first, then wipes every local store and key', a
   for (const key of ['femmie-logs', 'femmie-health', 'femmie-encryption', 'femmie-mood']) {
     expect(mockMem.has(key)).toBe(false);
   }
+});
+
+it('a failing device step after the server delete: still finishes and signs out', async () => {
+  mockRpc.mockResolvedValue({ error: null });
+  (wipeDatabase as jest.Mock).mockRejectedValueOnce(new Error('disk'));
+
+  const result = deleteAccountAndData(true);
+
+  await expect(result).rejects.toBeInstanceOf(LocalWipeError);
+  await expect(result).rejects.not.toBeInstanceOf(AccountDeletionError);
+  expect(mockCalls).toEqual(['cancelReminder', 'wipeLocal', 'signOut']);
+  expect(useLogStore.getState().logs).toEqual({});
 });
 
 it('not signed in: wipes the device without calling the server', async () => {

@@ -41,6 +41,21 @@ export function migrateLogState(persisted: unknown): PersistedLogState {
   };
 }
 
+// Hydration can end in success or failure; zustand's own hasHydrated() only
+// reports success, which would leave the app on its splash forever after a
+// failed read. This tracks "finished either way".
+let hydrationSettled = false;
+const hydrationListeners = new Set<() => void>();
+
+export function isLogStoreHydrationSettled(): boolean {
+  return hydrationSettled;
+}
+
+export function onLogStoreHydrationSettled(listener: () => void): () => void {
+  hydrationListeners.add(listener);
+  return () => hydrationListeners.delete(listener);
+}
+
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -123,6 +138,10 @@ export const useLogStore = create<LogState>()(
         phaseContentMuted: s.phaseContentMuted,
         onboardingDone: s.onboardingDone,
       }),
+      onRehydrateStorage: () => () => {
+        hydrationSettled = true;
+        hydrationListeners.forEach((l) => l());
+      },
       migrate: async (persisted, version) => {
         if (version < 1) await purgeLegacyStores();
         return migrateLogState(persisted);
