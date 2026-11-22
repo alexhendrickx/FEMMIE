@@ -143,14 +143,14 @@ describe('computeCorrelations', () => {
     const logs = buildHistory({
       cycleCount: 4,
       symptoms: [
-        { dayOffset: 8, cycles: [0], entry: { categoryId: 'nausea', value: true } }, // follicular
-        { dayOffset: 21, cycles: [1], entry: { categoryId: 'nausea', value: true } }, // luteal
+        { dayOffset: 8, cycles: [0], entry: { categoryId: 'headache', value: true } }, // follicular
+        { dayOffset: 21, cycles: [1], entry: { categoryId: 'headache', value: true } }, // luteal
       ],
     });
-    const nausea = computeCorrelations(logs).find((c) => c.symptomId === 'nausea')!;
-    expect(nausea.phaseCounts.follicular).toBe(1);
-    expect(nausea.phaseCounts.luteal).toBe(1);
-    expect(nausea.dominantPhase).toBe('follicular'); // earlier in PHASES order
+    const headache = computeCorrelations(logs).find((c) => c.symptomId === 'headache')!;
+    expect(headache.phaseCounts.follicular).toBe(1);
+    expect(headache.phaseCounts.luteal).toBe(1);
+    expect(headache.dominantPhase).toBe('follicular'); // earlier in PHASES order
   });
 
   test('a pattern in fewer than MIN_CYCLES cycles is flagged low_sample', () => {
@@ -165,19 +165,14 @@ describe('computeCorrelations', () => {
     expect(headache.confidence).toBe('low_sample');
   });
 
-  test('uses supplied labels (e.g. custom tags) in name + pattern sentence', () => {
+  test('unknown/legacy category ids are never treated as symptoms', () => {
     const logs = buildHistory({
-      cycleCount: 4,
+      cycleCount: 6,
       symptoms: [
-        { dayOffset: 21, cycles: [0, 1, 2], entry: { categoryId: 'tag_brainfog', value: true } },
+        { dayOffset: 21, cycles: [0, 1, 2, 3, 4], entry: { categoryId: 'nausea', value: true } },
       ],
     });
-    const c = computeCorrelations(logs, { labels: { tag_brainfog: 'Brain fog' } }).find(
-      (x) => x.symptomId === 'tag_brainfog',
-    )!;
-    expect(c.symptomName).toBe('Brain fog');
-    expect(c.pattern).toContain('brain fog');
-    expect(c.pattern).toContain('luteal');
+    expect(computeCorrelations(logs).map((c) => c.symptomId)).not.toContain('nausea');
   });
 });
 
@@ -193,20 +188,6 @@ describe('surfaceCorrelations', () => {
     const surfaced = surfaceCorrelations(logs).map((c) => c.symptomId);
     expect(surfaced).toContain('cramps');
     expect(surfaced).not.toContain('headache');
-  });
-
-  test('"not relevant" feedback hides a pattern from future surfacing', () => {
-    const logs = buildHistory({
-      cycleCount: 6,
-      symptoms: [
-        { dayOffset: 21, cycles: [0, 1, 2, 3, 4], entry: { categoryId: 'cramps', value: 4 } },
-      ],
-    });
-    const hidden = surfaceCorrelations(logs, { cramps: { helpful: false } });
-    expect(hidden.map((c) => c.symptomId)).not.toContain('cramps');
-
-    const kept = surfaceCorrelations(logs, { cramps: { helpful: true } });
-    expect(kept.map((c) => c.symptomId)).toContain('cramps');
   });
 
   test('sorts the most concentrated pattern first', () => {

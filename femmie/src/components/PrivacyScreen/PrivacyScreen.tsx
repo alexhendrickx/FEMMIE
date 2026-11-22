@@ -11,13 +11,10 @@ import { WipeConfirmSheet } from './WipeConfirmSheet';
 import { wipeLocal } from '../../services/encryption';
 import { wipeDatabase } from '../../services/sqlite';
 import { useEncryptionStore } from '../../store/encryptionStore';
-import { usePainStore } from '../../store/painStore';
-import { useMoodStore } from '../../store/moodStore';
-import { useTagStore } from '../../store/tagStore';
+import { useLogStore } from '../../store/logStore';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/supabase';
 import { colors } from '../../theme/colors';
-import type { WipeMode } from '../../types/encryption';
 
 export function PrivacyScreen() {
   const { session } = useAuth();
@@ -27,7 +24,6 @@ export function PrivacyScreen() {
     lastSyncAt,
     keyReady,
     setCloudSync,
-    requestWipe,
   } = useEncryptionStore();
 
   const [wipeSheetOpen, setWipeSheetOpen] = useState(false);
@@ -38,43 +34,30 @@ export function PrivacyScreen() {
     [setCloudSync],
   );
 
-  const handleWipeConfirm = useCallback(
-    async (mode: WipeMode) => {
-      setWipeSheetOpen(false);
-      setWiping(true);
-      requestWipe(mode);
+  const handleWipeConfirm = useCallback(async () => {
+    setWipeSheetOpen(false);
+    setWiping(true);
 
-      // 1. Clear persisted stores FIRST: clearAll() triggers an async encrypted re-write that
-      //    calls initLocalDEK(), which would mint a NEW keychain key if it ran after wipeLocal().
-      //    Clearing before the key is destroyed means the wipe ends with no DEK in the keychain.
-      useMoodStore.getState().clearAll();
-      await useMoodStore.persist.clearStorage();
-      await useTagStore.getState().clearAll(); // tags: clear persisted envelope + memory before the key is destroyed
+    // 1. Clear the persisted log envelope FIRST: clearing triggers an async
+    //    encrypted re-write that calls initLocalDEK(), which would mint a NEW
+    //    keychain key if it ran after wipeLocal(). Clearing before the key is
+    //    destroyed means the wipe ends with no DEK in the keychain.
+    useLogStore.getState().clearAll();
+    await useLogStore.persist.clearStorage();
 
-      // 2. Destroy local data + key
-      await wipeLocal();
-      await wipeDatabase();
-      usePainStore.getState().clearAll();
-      await usePainStore.persist.clearStorage();
+    // 2. Destroy local data + key
+    await wipeLocal();
+    await wipeDatabase();
 
-      // 3. Delete this user's rows from Supabase (fire-and-forget — local is already gone)
-      if (session) {
-        const userId = session.userId;
-        supabase.from('logs').delete().eq('user_id', userId).then(
-          () => {},
-          () => {}, // Offline — Supabase has nothing to clean up if sync never ran
-        );
-        supabase.from('key_material').delete().eq('user_id', userId).then(
-          () => {},
-          () => {},
-        );
-      }
+    // 3. Delete this user's rows from Supabase (fire-and-forget — local is gone)
+    if (session) {
+      const userId = session.userId;
+      supabase.from('logs').delete().eq('user_id', userId).then(() => {}, () => {});
+      supabase.from('key_material').delete().eq('user_id', userId).then(() => {}, () => {});
+    }
 
-      setWiping(false);
-      // Navigate away — app should show onboarding/empty state
-    },
-    [requestWipe, session],
-  );
+    setWiping(false);
+  }, [session]);
 
   const syncLabel =
     syncStatus === 'synced' && lastSyncAt
@@ -98,7 +81,7 @@ export function PrivacyScreen() {
       <Section title="What Femmie stores">
         <InfoRow icon="🩸" label="Cycle logs" desc="Period dates, flow, symptoms, mood — everything you log." />
         <InfoRow icon="❤️" label="Health signals" desc="Sleep, HRV, and heart rate pulled from Apple Health or Health Connect (only if you allow it)." />
-        <InfoRow icon="⚙️" label="App settings" desc="Notification preferences, category ordering, shortcuts." />
+        <InfoRow icon="⚙️" label="App settings" desc="Notification and display preferences." />
         <InfoRow icon="🔑" label="Encryption key (wrapped)" desc="Your personal data key, locked by your device's secure enclave. We cannot read it." />
       </Section>
 
@@ -170,7 +153,7 @@ export function PrivacyScreen() {
 
       <WipeConfirmSheet
         visible={wipeSheetOpen}
-        onConfirm={handleWipeConfirm}
+        onConfirm={() => void handleWipeConfirm()}
         onCancel={() => setWipeSheetOpen(false)}
       />
     </ScrollView>
@@ -326,7 +309,7 @@ const styles = StyleSheet.create({
   },
   wipeBtn: {
     borderWidth: 1.5,
-    borderColor: '#E57373',
+    borderColor: colors.danger,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
@@ -337,6 +320,6 @@ const styles = StyleSheet.create({
   wipeBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#C62828',
+    color: colors.danger,
   },
 });

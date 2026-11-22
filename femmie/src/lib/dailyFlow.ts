@@ -39,8 +39,10 @@ export function buildFlowSteps(opts: { isLikelyPeriod: boolean }): FlowStepId[] 
   return opts.isLikelyPeriod ? ['flow', ...core] : core;
 }
 
-/** Re-exported for existing callers; the quick-symptom set lives in ./quickSymptoms. */
-export { DEFAULT_QUICK_SYMPTOM_IDS } from './quickSymptoms';
+/** The fixed symptom chips in the daily ritual — one set for everyone, no setup. */
+export const RITUAL_SYMPTOM_IDS: string[] = [
+  'cramps', 'headache', 'bloating', 'fatigue', 'spotting', 'clots',
+];
 
 /** The "present today" value for a quick symptom, by its input type. */
 function presentValue(categoryId: string): LogEntry['value'] {

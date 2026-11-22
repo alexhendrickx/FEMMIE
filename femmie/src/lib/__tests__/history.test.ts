@@ -76,17 +76,16 @@ describe('loggedDaysDescending', () => {
 
 describe('formatEntryValue', () => {
   test('boolean present entries have no value label', () => {
-    expect(formatEntryValue('headache', true)).toBeNull();
+    expect(formatEntryValue(true)).toBeNull();
   });
 
   test('flow / mood string values are humanized', () => {
-    expect(formatEntryValue('menstrual_flow', 'very_heavy')).toBe('very heavy');
-    expect(formatEntryValue('mood', 'low')).toBe('low');
+    expect(formatEntryValue('very_heavy')).toBe('very heavy');
+    expect(formatEntryValue('low')).toBe('low');
   });
 
-  test('scale numbers render as n/5, hours as Nh', () => {
-    expect(formatEntryValue('cramps', 3)).toBe('3/5'); // cramps is a scale
-    expect(formatEntryValue('sleep_hours', 7)).toBe('7h'); // sleep_hours is hours
+  test('numbers render as n/5 (every remaining numeric category is a scale)', () => {
+    expect(formatEntryValue(3)).toBe('3/5');
   });
 });
 

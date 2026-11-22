@@ -59,3 +59,17 @@ describe('phaseContentMuted preference', () => {
     expect(useLogStore.getState().reminderEnabled).toBe(true);
   });
 });
+
+describe('clearAll (privacy wipe)', () => {
+  it('resets logs and preferences to factory state', () => {
+    useLogStore.getState().saveLog({ date: '2026-01-01', cycleDay: 1, entries: [] });
+    useLogStore.getState().setReminder(true);
+    useLogStore.getState().setPhaseContentMuted(true);
+    useLogStore.getState().clearAll();
+    const s = useLogStore.getState();
+    expect(s.logs).toEqual({});
+    expect(s.reminderEnabled).toBe(false);
+    expect(s.phaseContentMuted).toBe(false);
+    expect(s.cycleLengthPref).toBe(28);
+  });
+});

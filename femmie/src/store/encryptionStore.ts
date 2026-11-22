@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { SyncStatus, WipeMode, WipeState } from '../types/encryption';
+import type { SyncStatus } from '../types/encryption';
 import type { RecoveryKeyMaterial } from '../types/auth';
 
 interface EncryptionState {
@@ -11,14 +11,11 @@ interface EncryptionState {
   cloudSyncEnabled: boolean;
   syncStatus: SyncStatus;
   lastSyncAt: string | null;
-  wipe: WipeState;
 
   setKeyReady: (ready: boolean) => void;
   setKeyMaterial: (material: RecoveryKeyMaterial | null) => void;
   setCloudSync: (enabled: boolean) => void;
   setSyncStatus: (status: SyncStatus, syncedAt?: string) => void;
-  requestWipe: (mode: WipeMode) => void;
-  clearWipeRequest: () => void;
 }
 
 export const useEncryptionStore = create<EncryptionState>()(
@@ -29,7 +26,6 @@ export const useEncryptionStore = create<EncryptionState>()(
       cloudSyncEnabled: false,
       syncStatus: 'local_only',
       lastSyncAt: null,
-      wipe: { requested: false, mode: null, requestedAt: null },
 
       setKeyReady(ready) {
         set({ keyReady: ready });
@@ -49,20 +45,6 @@ export const useEncryptionStore = create<EncryptionState>()(
       setSyncStatus(status, syncedAt) {
         set({ syncStatus: status, lastSyncAt: syncedAt ?? null });
       },
-
-      requestWipe(mode) {
-        set({
-          wipe: {
-            requested: true,
-            mode,
-            requestedAt: new Date().toISOString(),
-          },
-        });
-      },
-
-      clearWipeRequest() {
-        set({ wipe: { requested: false, mode: null, requestedAt: null } });
-      },
     }),
     {
       name: 'femmie-encryption',
@@ -72,7 +54,6 @@ export const useEncryptionStore = create<EncryptionState>()(
         keyMaterial: state.keyMaterial,
         cloudSyncEnabled: state.cloudSyncEnabled,
         lastSyncAt: state.lastSyncAt,
-        wipe: state.wipe,
       }),
     },
   ),

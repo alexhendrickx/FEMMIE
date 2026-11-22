@@ -17,7 +17,7 @@ import {
   assembleEntries,
   insightOfTheDay,
   emptyAnswers,
-  DEFAULT_QUICK_SYMPTOM_IDS,
+  RITUAL_SYMPTOM_IDS,
   type FlowAnswers,
 } from '../../lib/dailyFlow';
 
@@ -57,7 +57,6 @@ interface DailyFlowProps {
   date: string;
   cycleDay: number | null;
   isLikelyPeriod: boolean;
-  quickSymptomIds?: string[];
   onClose: () => void;
   onSaved?: () => void;
 }
@@ -67,7 +66,6 @@ export function DailyFlow({
   date,
   cycleDay,
   isLikelyPeriod,
-  quickSymptomIds = DEFAULT_QUICK_SYMPTOM_IDS,
   onClose,
   onSaved,
 }: DailyFlowProps) {
@@ -180,7 +178,7 @@ export function DailyFlow({
 
           {step === 'symptoms' && (
             <StepSymptoms
-              ids={quickSymptomIds}
+              ids={RITUAL_SYMPTOM_IDS}
               selected={answers.symptoms}
               onToggle={(id) =>
                 setAnswers((a) => ({
