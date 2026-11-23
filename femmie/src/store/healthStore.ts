@@ -76,6 +76,10 @@ export const useHealthStore = create<HealthState>()(
       // Which health types sync, and when, is health data: encrypt it at rest.
       // A plaintext blob from an older build still hydrates and is re-written encrypted.
       storage: createJSONStorage(() => encryptedStorage),
+      // v1 = encrypted. Bumping the version makes zustand re-write storage right after
+      // hydrating an old v0 blob, so the plaintext copy doesn't linger.
+      version: 1,
+      migrate: (persisted) => persisted as HealthState,
       // Set is not JSON-serialisable; convert to/from array
       partialize: (state) => ({
         ...state,
@@ -84,7 +88,7 @@ export const useHealthStore = create<HealthState>()(
       merge: (persisted: any, current) => ({
         ...current,
         ...persisted,
-        pausedIds: new Set<string>(persisted.pausedIds ?? []),
+        pausedIds: new Set<string>(persisted?.pausedIds ?? []),
       }),
     },
   ),

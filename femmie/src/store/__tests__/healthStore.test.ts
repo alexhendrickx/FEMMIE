@@ -50,4 +50,14 @@ it('hydrates a plaintext blob from an older build', async () => {
 
   expect(useHealthStore.getState().permissionStatus).toBe('granted');
   expect(useHealthStore.getState().isPaused('resting_heart_rate')).toBe(true);
+
+  // The plaintext copy is replaced by ciphertext straight after hydration.
+  await encryptedWritesSettled();
+  const onDisk = mockMem.get('femmie-health')!;
+  expect(onDisk).not.toContain('resting_heart_rate');
+  expect(typeof JSON.parse(onDisk).ciphertext).toBe('string');
+});
+
+it('hydrates a fresh install (nothing stored) without throwing', async () => {
+  await expect(useHealthStore.persist.rehydrate()).resolves.not.toThrow();
 });

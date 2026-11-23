@@ -279,6 +279,9 @@ export function decrypt<T>(payload: EncryptedPayload): T | null {
  * Cloud deletion is triggered separately via Supabase row deletion.
  */
 export async function wipeLocal(): Promise<void> {
+  // Let a key load that is already running finish first, so it can't restore the
+  // key into memory or save a fresh one after we delete it.
+  if (_initInFlight) await _initInFlight.catch(() => false);
   // Zero out in-memory key
   if (_plaintextDek) {
     _plaintextDek.fill(0);
