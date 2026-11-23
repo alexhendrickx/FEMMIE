@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { encryptedStorage } from '../services/secureStorage';
 import type { PermissionStatus, SyncEvent } from '../types/health';
 import { HEALTH_DATA_TYPES } from '../health/dataTypes';
 
@@ -73,7 +73,9 @@ export const useHealthStore = create<HealthState>()(
     }),
     {
       name: 'femmie-health',
-      storage: createJSONStorage(() => AsyncStorage),
+      // Which health types sync, and when, is health data: encrypt it at rest.
+      // A plaintext blob from an older build still hydrates and is re-written encrypted.
+      storage: createJSONStorage(() => encryptedStorage),
       // Set is not JSON-serialisable; convert to/from array
       partialize: (state) => ({
         ...state,

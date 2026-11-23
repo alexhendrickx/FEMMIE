@@ -64,6 +64,8 @@ export async function generateDEK(): Promise<Uint8Array> {
   return key;
 }
 
+let _initInFlight: Promise<boolean> | null = null;
+
 /**
  * Local-only DEK lifecycle (offline-first, no backend required).
  *
@@ -76,7 +78,19 @@ export async function generateDEK(): Promise<Uint8Array> {
  * fresh DEK on first launch. KMS wrapping (wrapAndStoreDEK) layers on top of
  * this later for cross-device sync; it is not required for at-rest safety.
  */
-export async function initLocalDEK(): Promise<boolean> {
+export function initLocalDEK(): Promise<boolean> {
+  if (_plaintextDek) return Promise.resolve(true);
+  // Several encrypted stores hydrate at once on launch. Share one attempt so a fresh
+  // install can't mint two keys and keep a different one in memory than in the keychain.
+  if (!_initInFlight) {
+    _initInFlight = _initLocalDEKOnce().finally(() => {
+      _initInFlight = null;
+    });
+  }
+  return _initInFlight;
+}
+
+async function _initLocalDEKOnce(): Promise<boolean> {
   const sodium = getSodium();
   if (!sodium) {
     // No libsodium (Expo Go / tests). Honour the fail-closed posture.
@@ -274,7 +288,6 @@ export async function wipeLocal(): Promise<void> {
   // Delete from SecureStore
   await SecureStore.deleteItemAsync(SECURE_STORE_KEY).catch(() => {});
 
-  // SQLite deletion is handled by sqliteStore.wipeDatabase()
 }
 
 // ─── Private ──────────────────────────────────────────────────────────────────

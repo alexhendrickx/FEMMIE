@@ -35,7 +35,6 @@
       ],
       "./plugins/withResourceBundleDeploymentTarget",
       "expo-notifications",
-      "expo-sqlite",
       "expo-secure-store",
       [
         "react-native-health",
