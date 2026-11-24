@@ -34,7 +34,23 @@ export const CategoryRow = memo(function CategoryRow({
           <BooleanInput value={value as boolean} onChange={(v) => onChange(category.id, v)} />
         )}
         {category.inputType === 'hours' && (
-          <HoursInput value={value as number} onChange={(v) => onChange(category.id, v)} />
+          <NumberInput
+            value={value as number}
+            onChange={(v) => onChange(category.id, v)}
+            suffix="h"
+            step={0.5}
+            min={0}
+            max={24}
+            fallback={7}
+          />
+        )}
+        {category.inputType === 'number' && (
+          <NumberInput
+            value={value as number}
+            onChange={(v) => onChange(category.id, v)}
+            suffix={category.unit ? ` ${category.unit}` : ''}
+            {...numberConfig(category.unit)}
+          />
         )}
       </View>
     </View>
@@ -144,24 +160,52 @@ function BooleanInput({ value, onChange }: { value: boolean | undefined; onChang
   );
 }
 
-// ─── Hours ───────────────────────────────────────────────────────────────────
+// ─── Number (hours, temperature, weight, counts…) ────────────────────────────
 
-function HoursInput({ value, onChange }: { value: number | undefined; onChange: (v: number) => void }) {
-  const hours = value ?? 7;
+/** Per-unit stepper config for free numeric inputs. */
+function numberConfig(unit?: string): { step: number; min: number; max: number; fallback: number } {
+  switch (unit) {
+    case '°C':
+      return { step: 0.1, min: 34, max: 42, fallback: 36.6 };
+    case 'kg':
+      return { step: 0.1, min: 0, max: 400, fallback: 60 };
+    case 'glasses':
+      return { step: 1, min: 0, max: 30, fallback: 0 };
+    default:
+      return { step: 1, min: 0, max: 9999, fallback: 0 };
+  }
+}
+
+/** Round to one decimal so 0.1 steps don't drift (e.g. 36.6000001). */
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+interface NumberInputProps {
+  value: number | undefined;
+  onChange: (v: number) => void;
+  /** Rendered immediately after the value, e.g. 'h' or ' °C'. */
+  suffix: string;
+  step: number;
+  min: number;
+  max: number;
+  fallback: number;
+}
+
+function NumberInput({ value, onChange, suffix, step, min, max, fallback }: NumberInputProps) {
+  const current = value ?? fallback;
   return (
     <View style={styles.stepper}>
       <TouchableOpacity
         style={styles.stepBtn}
-        onPress={() => onChange(Math.max(0, hours - 0.5))}
-        accessibilityLabel="decrease hours"
+        onPress={() => onChange(round1(Math.max(min, current - step)))}
+        accessibilityLabel="decrease"
       >
         <Text style={styles.stepBtnText}>−</Text>
       </TouchableOpacity>
-      <Text style={styles.stepValue}>{hours}h</Text>
+      <Text style={styles.stepValue}>{`${current}${suffix}`}</Text>
       <TouchableOpacity
         style={styles.stepBtn}
-        onPress={() => onChange(Math.min(24, hours + 0.5))}
-        accessibilityLabel="increase hours"
+        onPress={() => onChange(round1(Math.min(max, current + step)))}
+        accessibilityLabel="increase"
       >
         <Text style={styles.stepBtnText}>+</Text>
       </TouchableOpacity>

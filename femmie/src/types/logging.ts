@@ -6,8 +6,8 @@ export type BooleanValue = boolean;
 
 export type EntryValue = FlowValue | ScaleValue | MoodValue | HoursValue | BooleanValue;
 
-export type InputType = 'flow' | 'scale' | 'mood' | 'boolean' | 'hours';
-export type CategoryGroup = 'flow' | 'symptoms' | 'mood' | 'lifestyle';
+export type InputType = 'flow' | 'scale' | 'mood' | 'boolean' | 'hours' | 'number';
+export type CategoryGroup = 'flow' | 'symptoms' | 'mood' | 'lifestyle' | 'fertility';
 
 export interface Category {
   id: string;
@@ -19,6 +19,8 @@ export interface Category {
   icon: string;
   /** One-line, plain-language meaning — shown in the quick-symptom picker (decision #14). */
   explain?: string;
+  /** Unit suffix for `number` inputs (e.g. '°C', 'kg', 'glasses'). */
+  unit?: string;
 }
 
 export interface LogEntry {

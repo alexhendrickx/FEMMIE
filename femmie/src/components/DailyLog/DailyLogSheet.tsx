@@ -170,14 +170,20 @@ export function DailyLogSheet({
             sections.map((section) => (
               <View key={section.group} style={styles.sectionCard}>
                 <Text style={styles.sectionTitle}>{section.title}</Text>
-                {section.categories.map((cat) => (
-                  <CategoryRow
-                    key={cat.id}
-                    category={cat}
-                    value={entries.get(cat.id)}
-                    onChange={handleChange}
-                  />
-                ))}
+                <View style={styles.grid}>
+                  {section.categories.map((cat) => (
+                    <View
+                      key={cat.id}
+                      style={cat.inputType === 'boolean' ? styles.halfCell : styles.fullCell}
+                    >
+                      <CategoryRow
+                        category={cat}
+                        value={entries.get(cat.id)}
+                        onChange={handleChange}
+                      />
+                    </View>
+                  ))}
+                </View>
               </View>
             ))
           )}
@@ -311,6 +317,19 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 2,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  // Boolean toggles are compact → two per row.
+  halfCell: {
+    width: '48%',
+  },
+  // Flow / scale / mood / number controls need room → full width.
+  fullCell: {
+    width: '100%',
   },
   emptyText: {
     fontSize: 14,

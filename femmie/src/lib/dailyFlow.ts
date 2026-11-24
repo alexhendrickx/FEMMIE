@@ -1,4 +1,4 @@
-import type { DailyLog, LogEntry, MoodValue, FlowValue } from '../types/logging';
+import type { DailyLog, LogEntry, MoodValue, FlowValue, ScaleValue } from '../types/logging';
 import { CATEGORY_MAP } from '../data/categories';
 import { todayOutlook } from './outlook';
 import { surfaceCorrelations } from './correlation';
@@ -11,12 +11,16 @@ import { surfaceCorrelations } from './correlation';
  * split means the heart of the app has test coverage even though its screen doesn't.
  */
 
-export type FlowStepId = 'flow' | 'mood' | 'symptoms' | 'insight';
+export type FlowStepId = 'flow' | 'mood' | 'energy' | 'sleep' | 'symptoms' | 'insight';
 
 export interface FlowAnswers {
   mood?: MoodValue;
   /** 'none' = explicitly no flow that day; undefined = not asked. */
   flow?: FlowValue | 'none';
+  /** Energy level today (1–5). */
+  energy?: ScaleValue;
+  /** Sleep quality last night (1–5). */
+  sleep?: ScaleValue;
   /** categoryId → selected. */
   symptoms: Record<string, boolean>;
 }
@@ -29,9 +33,10 @@ export const emptyAnswers = (): FlowAnswers => ({ symptoms: {} });
  * insight is always last (decision #12).
  */
 export function buildFlowSteps(opts: { isLikelyPeriod: boolean }): FlowStepId[] {
-  return opts.isLikelyPeriod
-    ? ['flow', 'mood', 'symptoms', 'insight']
-    : ['mood', 'symptoms', 'insight'];
+  // A short daily ritual: mood, energy and sleep every day; flow only leads on a
+  // likely period day; the insight always closes (decision #12).
+  const core: FlowStepId[] = ['mood', 'energy', 'sleep', 'symptoms', 'insight'];
+  return opts.isLikelyPeriod ? ['flow', ...core] : core;
 }
 
 /** Re-exported for existing callers; the quick-symptom set lives in ./quickSymptoms. */
@@ -55,6 +60,8 @@ export function assembleEntries(answers: FlowAnswers): LogEntry[] {
   if (answers.flow && answers.flow !== 'none') {
     entries.push({ categoryId: 'menstrual_flow', value: answers.flow });
   }
+  if (answers.energy) entries.push({ categoryId: 'energy', value: answers.energy });
+  if (answers.sleep) entries.push({ categoryId: 'sleep_quality', value: answers.sleep });
   for (const [categoryId, selected] of Object.entries(answers.symptoms)) {
     if (selected) entries.push({ categoryId, value: presentValue(categoryId) });
   }

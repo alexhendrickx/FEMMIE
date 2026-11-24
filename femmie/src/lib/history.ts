@@ -72,8 +72,11 @@ export interface DaySummaryItem {
 export function formatEntryValue(categoryId: string, value: EntryValue): string | null {
   if (typeof value === 'boolean') return null; // boolean entries are "present"; icon + label is enough
   if (typeof value === 'string') return value.replace(/_/g, ' '); // flow / mood words
-  // number: disambiguate scale (1–5) from hours by the category's input type
-  return CATEGORY_MAP.get(categoryId)?.inputType === 'hours' ? `${value}h` : `${value}/5`;
+  // number: disambiguate scale (1–5), hours, and free numeric inputs by input type
+  const cat = CATEGORY_MAP.get(categoryId);
+  if (cat?.inputType === 'hours') return `${value}h`;
+  if (cat?.inputType === 'number') return cat.unit ? `${value} ${cat.unit}` : `${value}`;
+  return `${value}/5`;
 }
 
 /** Summarize a day's entries into short icon + label (+ optional value) chips for the List row. */
