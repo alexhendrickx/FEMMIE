@@ -11,12 +11,14 @@
  *    minimum (12.4 / 13.4). The Podfile already loops over those resource
  *    bundles to disable code signing; we extend that loop to set the target.
  *
- * 2. fmt consteval. Apple clang 21 (Xcode 26) enforces `consteval` strictly, so
- *    the `fmt` library bundled with RN 0.79 (via RCT-Folly) fails to compile
- *    ("call to consteval function ... is not a constant expression"). The fix
- *    is to define FMT_USE_CONSTEVAL=0 for every pod that consumes fmt, so its
- *    format-string checks run at runtime instead of compile time. Remove once
- *    React Native ships fmt >= 12.1.0. See fmtlib/fmt#4740, expo/expo#44229.
+ * 2. fmt consteval. Apple clang in Xcode 26 enforces `consteval` strictly, so
+ *    the fmt 11.0.2 bundled with RN 0.79 (via RCT-Folly) fails to compile
+ *    ("call to consteval function ... is not a constant expression"). fmt
+ *    11.0.x sets FMT_USE_CONSTEVAL itself in base.h and ignores a
+ *    -DFMT_USE_CONSTEVAL=0 compiler flag (the override hook arrived in 11.1),
+ *    so the header is rewritten after pods install. Format strings are then
+ *    checked at runtime instead of compile time. Remove once React Native
+ *    ships a fixed fmt. See fmtlib/fmt#4740, expo/expo#44229.
  */
 const { withDangerousMod } = require('@expo/config-plugins');
 const fs = require('fs');
@@ -31,15 +33,17 @@ const DEPLOY_INJECTION =
 
 // Inserted just before the resource-bundle comment block inside post_install.
 const FMT_ANCHOR = '    # This is necessary for Xcode 14';
+const FMT_MARKER = 'fmt_base_h';
 const FMT_INJECTION =
-  `    # Xcode 26 / Apple clang 21: disable fmt's consteval format-string\n` +
-  `    # checking so RN 0.79's bundled fmt compiles. Drop once RN ships fmt 12.1+.\n` +
-  `    installer.pods_project.targets.each do |target|\n` +
-  `      target.build_configurations.each do |config|\n` +
-  `        defs = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] || ['$(inherited)']\n` +
-  `        defs = [defs] unless defs.is_a?(Array)\n` +
-  `        defs << 'FMT_USE_CONSTEVAL=0' unless defs.include?('FMT_USE_CONSTEVAL=0')\n` +
-  `        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = defs\n` +
+  `    # Xcode 26: turn off fmt's consteval format-string checking by patching\n` +
+  `    # the header. fmt 11.0.x ignores -DFMT_USE_CONSTEVAL=0.\n` +
+  `    ${FMT_MARKER} = File.join(installer.sandbox.root, 'fmt', 'include', 'fmt', 'base.h')\n` +
+  `    if File.exist?(${FMT_MARKER})\n` +
+  `      fmt_src = File.read(${FMT_MARKER})\n` +
+  `      fmt_patched = fmt_src.gsub(/#(\\s*)define FMT_USE_CONSTEVAL 1/) { "##{$1}define FMT_USE_CONSTEVAL 0" }\n` +
+  `      if fmt_patched != fmt_src\n` +
+  `        File.chmod(0644, ${FMT_MARKER})\n` +
+  `        File.write(${FMT_MARKER}, fmt_patched)\n` +
   `      end\n` +
   `    end\n\n` +
   FMT_ANCHOR;
@@ -60,7 +64,7 @@ module.exports = function withResourceBundleDeploymentTarget(config) {
 
       if (
         contents.includes(FMT_ANCHOR) &&
-        !contents.includes('FMT_USE_CONSTEVAL=0')
+        !contents.includes(FMT_MARKER)
       ) {
         contents = contents.replace(FMT_ANCHOR, FMT_INJECTION);
       }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
   SafeAreaView,
   View,
@@ -18,7 +18,7 @@ import { TodayOutlookCard } from './src/components/TodayOutlook';
 import { DailyFlow } from './src/components/DailyFlow';
 import { YouSheet } from './src/components/You';
 import { CalendarModal } from './src/components/Calendar';
-import { useLogStore } from './src/store/logStore';
+import { useLogStore, isLogStoreHydrationSettled, onLogStoreHydrationSettled } from './src/store/logStore';
 import { colors } from './src/theme/colors';
 import {
   extractPeriodStarts,
@@ -122,7 +122,11 @@ function MainApp() {
 // ── Auth gate ─────────────────────────────────────────────────────────────────
 function AppGate() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [onboardingDone, setOnboardingDone] = useState(false);
+  const onboardingDone = useLogStore((s) => s.onboardingDone);
+  const completeOnboarding = useLogStore((s) => s.completeOnboarding);
+  // The encrypted store hydrates asynchronously; wait for it so a returning user
+  // never sees a flash of onboarding.
+  const hydrated = useSyncExternalStore(onLogStoreHydrationSettled, isLogStoreHydrationSettled);
   const saveLog = useLogStore((s) => s.saveLog);
   const setCycleLengthPref = useLogStore((s) => s.setCycleLengthPref);
 
@@ -130,24 +134,25 @@ function AppGate() {
   // the calendar are alive from day one (UX decision #16) instead of an empty ring.
   const finishOnboarding = (firstCycleDate: string | null, cycleLength: number) => {
     setCycleLengthPref(cycleLength);
-    if (firstCycleDate) {
+    // Never overwrite a day that already has a log (e.g. pulled from sync on a new device).
+    if (firstCycleDate && !useLogStore.getState().logs[firstCycleDate]) {
       saveLog({
         date: firstCycleDate,
         cycleDay: 1,
         entries: [{ categoryId: 'menstrual_flow', value: 'medium' }],
       });
     }
-    setOnboardingDone(true);
+    completeOnboarding();
   };
 
-  if (isLoading) {
+  if (isLoading || !hydrated) {
     return <View style={styles.splash} />;
   }
 
   if (!isAuthenticated || !onboardingDone) {
     return (
       <SafeAreaView style={styles.safe}>
-        <OnboardingScreen onComplete={finishOnboarding} />
+        <OnboardingScreen onComplete={finishOnboarding} signedIn={isAuthenticated} />
       </SafeAreaView>
     );
   }

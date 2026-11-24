@@ -19,7 +19,12 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: jest.fn(async () => {}),
 }));
 
-import { useLogStore, migrateLogState } from '../logStore';
+import {
+  useLogStore,
+  migrateLogState,
+  isLogStoreHydrationSettled,
+  onLogStoreHydrationSettled,
+} from '../logStore';
 
 async function flushPersist(): Promise<void> {
   for (let i = 0; i < 20 && !mockMem.has('femmie-logs'); i++) {
@@ -123,6 +128,28 @@ describe('upgrade from a pre-ritual build (persist v0 → v1)', () => {
       reminderEnabled: false,
       cycleLengthPref: 28,
       phaseContentMuted: false,
+      onboardingDone: false,
     });
+  });
+
+  it('reports hydration as settled so the app can leave its splash', async () => {
+    await useLogStore.persist.rehydrate();
+    expect(isLogStoreHydrationSettled()).toBe(true);
+  });
+
+  it('settles hydration even when reading the store fails', async () => {
+    const AsyncStorage = jest.requireMock('@react-native-async-storage/async-storage').default;
+    AsyncStorage.getItem.mockRejectedValueOnce(new Error('disk'));
+    const settled = jest.fn();
+    const off = onLogStoreHydrationSettled(settled);
+
+    await useLogStore.persist.rehydrate();
+
+    off();
+    expect(settled).toHaveBeenCalled();
+  });
+
+  it('treats an upgrading user with logs as already onboarded', () => {
+    expect(migrateLogState({ logs: legacyState.logs }).onboardingDone).toBe(true);
   });
 });

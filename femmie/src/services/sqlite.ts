@@ -119,5 +119,7 @@ export async function wipeDatabase(): Promise<void> {
     await _db.closeAsync();
     _db = null;
   }
-  await SQLite.deleteDatabaseAsync(DB_NAME);
+  // The file only exists once something has been stored; deleteDatabaseAsync
+  // throws when it is missing, and "nothing to delete" is a successful wipe.
+  await SQLite.deleteDatabaseAsync(DB_NAME).catch(() => {});
 }

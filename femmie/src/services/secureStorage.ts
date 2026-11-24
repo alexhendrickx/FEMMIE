@@ -21,6 +21,18 @@ function isEncryptedPayload(value: unknown): value is EncryptedPayload {
   );
 }
 
+/** Tail of the in-flight encrypted writes, so a wipe can wait for them. */
+let pendingWrites: Promise<void> = Promise.resolve();
+
+/**
+ * Resolves once every encrypted write started so far has landed. The privacy
+ * wipe awaits this before destroying the key: a write still in flight would
+ * call initLocalDEK() afterwards and mint a fresh key in the keychain.
+ */
+export function encryptedWritesSettled(): Promise<void> {
+  return pendingWrites;
+}
+
 export const encryptedStorage: StateStorage = {
   async getItem(name) {
     await initLocalDEK();
@@ -41,10 +53,14 @@ export const encryptedStorage: StateStorage = {
     return decrypt<string>(parsed);
   },
 
-  async setItem(name, value) {
-    await initLocalDEK();
-    const payload = encrypt(value);
-    await AsyncStorage.setItem(name, JSON.stringify(payload));
+  setItem(name, value) {
+    const write = (async () => {
+      await initLocalDEK();
+      const payload = encrypt(value);
+      await AsyncStorage.setItem(name, JSON.stringify(payload));
+    })();
+    pendingWrites = pendingWrites.then(() => write).catch(() => {});
+    return write;
   },
 
   async removeItem(name) {

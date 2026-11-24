@@ -9,12 +9,14 @@ import { Step4CycleLength } from './Step4CycleLength';
 
 interface Props {
   onComplete: (firstCycleDate: string | null, cycleLength: number) => void;
+  /** Already signed in (app was closed mid-onboarding): resume after the account step. */
+  signedIn: boolean;
 }
 
 type Step = 1 | 2 | 3 | 4;
 
-export function OnboardingScreen({ onComplete }: Props) {
-  const [step, setStep] = useState<Step>(1);
+export function OnboardingScreen({ onComplete, signedIn }: Props) {
+  const [step, setStep] = useState<Step>(signedIn ? 3 : 1);
   const [firstDate, setFirstDate] = useState<string | null>(null);
 
   return (
@@ -22,7 +24,7 @@ export function OnboardingScreen({ onComplete }: Props) {
       <Stepper
         total={4}
         current={step}
-        onBack={step > 1 ? () => setStep((s) => (s - 1) as Step) : undefined}
+        onBack={step > (signedIn ? 3 : 1) ? () => setStep((s) => (s - 1) as Step) : undefined}
       />
 
       {step === 1 && <Step1Privacy onNext={() => setStep(2)} />}
