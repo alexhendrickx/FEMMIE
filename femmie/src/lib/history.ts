@@ -1,5 +1,6 @@
 import type { DailyLog, EntryValue } from '../types/logging';
 import { CATEGORY_MAP } from '../data/categories';
+import { symptomLabel } from './correlation';
 
 /**
  * Pure, framework-free logic for the History "Week / Month / List" view (UX decision #9).
@@ -64,16 +65,15 @@ export interface DaySummaryItem {
   categoryId: string;
   icon: string;
   label: string;
-  /** A short value label (e.g. 'medium', '3/5', '7h'), or null for a plain present/boolean entry. */
+  /** A short value label (e.g. 'medium', '3/5'), or null for a plain present/boolean entry. */
   valueLabel: string | null;
 }
 
-/** Format a single entry's value into a short human label, using its category's input type. */
-export function formatEntryValue(categoryId: string, value: EntryValue): string | null {
+/** Format a single entry's value into a short human label. */
+export function formatEntryValue(value: EntryValue): string | null {
   if (typeof value === 'boolean') return null; // boolean entries are "present"; icon + label is enough
   if (typeof value === 'string') return value.replace(/_/g, ' '); // flow / mood words
-  // number: disambiguate scale (1–5) from hours by the category's input type
-  return CATEGORY_MAP.get(categoryId)?.inputType === 'hours' ? `${value}h` : `${value}/5`;
+  return `${value}/5`; // every remaining numeric category is a 1–5 scale
 }
 
 /** Summarize a day's entries into short icon + label (+ optional value) chips for the List row. */
@@ -83,8 +83,8 @@ export function summarizeDay(log: DailyLog): DaySummaryItem[] {
     return {
       categoryId: entry.categoryId,
       icon: cat?.icon ?? '•',
-      label: cat?.label ?? entry.categoryId,
-      valueLabel: formatEntryValue(entry.categoryId, entry.value),
+      label: symptomLabel(entry.categoryId),
+      valueLabel: formatEntryValue(entry.value),
     };
   });
 }

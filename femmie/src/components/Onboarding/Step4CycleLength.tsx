@@ -68,7 +68,7 @@ export function Step4CycleLength({ initial = 28, onDone }: Props) {
         onPress={() => onDone(length)}
         accessibilityRole="button"
       >
-        <Text style={styles.btnText}>Next →</Text>
+        <Text style={styles.btnText}>Done</Text>
       </TouchableOpacity>
     </View>
   );

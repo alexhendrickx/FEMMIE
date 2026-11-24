@@ -11,7 +11,7 @@
     "preview": {
       "distribution": "internal",
       "ios": {
-        "image": "latest"
+        "image": "macos-tahoe-26.5-xcode-26.6"
       },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://xftklvzkkbwwlbzbfysi.supabase.co",
@@ -19,10 +19,21 @@
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "ios": {
+        "image": "macos-tahoe-26.5-xcode-26.6"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://xftklvzkkbwwlbzbfysi.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_aHaGNxaYjQr6EuslDGhbhw_7d89-LFc"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6831913051"
+      }
+    }
   }
 }

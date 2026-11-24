@@ -140,20 +140,6 @@ export async function writeToHealthConnect(
           time: date.toISOString(),
         }]);
         return true;
-      case 'ovulation':
-        await HC.insertRecords([{
-          recordType: 'OvulationTest',
-          result: HC.OvulationTestResult.POSITIVE,
-          time: date.toISOString(),
-        }]);
-        return true;
-      case 'sexual_activity':
-        await HC.insertRecords([{
-          recordType: 'SexualActivity',
-          protectionUsed: HC.ProtectionUsed.UNKNOWN,
-          time: date.toISOString(),
-        }]);
-        return true;
       default:
         return false;
     }

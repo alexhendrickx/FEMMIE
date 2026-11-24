@@ -58,24 +58,6 @@ export const HEALTH_DATA_TYPES: HealthDataType[] = [
     iosType: 'HKCategoryTypeIdentifierMenstrualFlow',
     androidType: 'MenstruationFlow',
   },
-  {
-    id: 'ovulation',
-    label: 'Ovulation',
-    direction: 'write',
-    icon: '🥚',
-    unit: '',
-    iosType: 'HKCategoryTypeIdentifierOvulationTestResult',
-    androidType: 'OvulationTest',
-  },
-  {
-    id: 'sexual_activity',
-    label: 'Sexual activity',
-    direction: 'write',
-    icon: '🔒',
-    unit: '',
-    iosType: 'HKCategoryTypeIdentifierSexualActivity',
-    androidType: 'SexualActivity',
-  },
 ];
 
 export const DATA_TYPE_MAP = new Map(HEALTH_DATA_TYPES.map((t) => [t.id, t]));
