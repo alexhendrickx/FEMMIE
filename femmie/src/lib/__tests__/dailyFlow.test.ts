@@ -3,7 +3,7 @@ import {
   assembleEntries,
   insightOfTheDay,
   emptyAnswers,
-  DEFAULT_QUICK_SYMPTOM_IDS,
+  RITUAL_SYMPTOM_IDS,
 } from '../dailyFlow';
 import type { DailyLog, LogEntry } from '../../types/logging';
 
@@ -38,14 +38,14 @@ describe('assembleEntries', () => {
       flow: 'medium',
       energy: 4,
       sleep: 2,
-      symptoms: { cramps: true, headache: false, acne: true },
+      symptoms: { cramps: true, headache: false, spotting: true },
     });
     expect(entries).toContainEqual({ categoryId: 'mood', value: 'low' });
     expect(entries).toContainEqual({ categoryId: 'menstrual_flow', value: 'medium' });
     expect(entries).toContainEqual({ categoryId: 'energy', value: 4 });
     expect(entries).toContainEqual({ categoryId: 'sleep_quality', value: 2 });
     expect(entries).toContainEqual({ categoryId: 'cramps', value: 3 }); // scale → 3
-    expect(entries).toContainEqual({ categoryId: 'acne', value: true }); // boolean → true
+    expect(entries).toContainEqual({ categoryId: 'spotting', value: true }); // boolean → true
     expect(entries.some((e) => e.categoryId === 'headache')).toBe(false);
   });
 
@@ -73,10 +73,10 @@ describe('insightOfTheDay', () => {
   });
 });
 
-test('the default quick-symptom set is all real categories', () => {
+test('the fixed ritual symptom set is all real categories', () => {
   // guards against a typo'd id silently producing an untappable symptom
   const { CATEGORY_MAP } = require('../../data/categories');
-  for (const id of DEFAULT_QUICK_SYMPTOM_IDS) {
+  for (const id of RITUAL_SYMPTOM_IDS) {
     expect(CATEGORY_MAP.has(id)).toBe(true);
   }
 });

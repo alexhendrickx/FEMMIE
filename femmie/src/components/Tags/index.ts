@@ -1,1 +1,0 @@
-export { TagManagerScreen } from './TagManagerScreen';

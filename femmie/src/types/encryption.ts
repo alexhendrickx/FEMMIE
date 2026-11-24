@@ -1,5 +1,3 @@
-export type WipeMode = 'immediate' | 'soft'; // soft = 7-day grace period
-
 export interface EncryptedPayload {
   /** base64-encoded ciphertext */
   ciphertext: string;
@@ -10,9 +8,3 @@ export interface EncryptedPayload {
 }
 
 export type SyncStatus = 'local_only' | 'syncing' | 'synced' | 'error';
-
-export interface WipeState {
-  requested: boolean;
-  mode: WipeMode | null;
-  requestedAt: string | null;
-}
