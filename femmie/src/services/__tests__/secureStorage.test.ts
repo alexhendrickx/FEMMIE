@@ -24,7 +24,7 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: jest.fn(async () => {}),
 }));
 
-import { encryptedStorage } from '../secureStorage';
+import { encryptedStorage, encryptedWritesSettled } from '../secureStorage';
 
 beforeEach(() => mockMem.clear());
 
@@ -56,5 +56,16 @@ describe('encryptedStorage', () => {
 
   it('returns null for a missing key', async () => {
     expect(await encryptedStorage.getItem('nope')).toBeNull();
+  });
+});
+
+describe('encryptedWritesSettled', () => {
+  it('resolves only after a write that was not awaited has landed', async () => {
+    void encryptedStorage.setItem('femmie-logs', '{"state":{}}');
+    expect(mockMem.has('femmie-logs')).toBe(false);
+
+    await encryptedWritesSettled();
+
+    expect(mockMem.has('femmie-logs')).toBe(true);
   });
 });

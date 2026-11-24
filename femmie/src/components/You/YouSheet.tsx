@@ -8,30 +8,19 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { HistoryView } from './HistoryView';
-import { InsightsScreen } from '../Insights';
-import { PainScreen } from '../Pain';
-import { MoodScreen } from '../Mood';
-import { TagManagerScreen } from '../Tags';
 import { HealthIntegrationScreen } from '../HealthIntegration/HealthIntegrationScreen';
 import { PrivacyScreen } from '../PrivacyScreen';
 import { SettingsScreen } from './SettingsScreen';
 import { colors } from '../../theme/colors';
 
-type YouView = 'list' | 'history' | 'insights' | 'pain' | 'mood' | 'tags' | 'health' | 'privacy' | 'settings';
+type YouView = 'list' | 'health' | 'privacy' | 'settings';
 
 interface YouSheetProps {
   visible: boolean;
   onClose: () => void;
-  onCalendarDayLog: () => void;
 }
 
 const ROW_DEFS: { id: Exclude<YouView, 'list'>; icon: string; label: string }[] = [
-  { id: 'history', icon: '📅', label: 'History' },
-  { id: 'insights', icon: '💡', label: 'Insights' },
-  { id: 'pain', icon: '🩹', label: 'Pain' },
-  { id: 'mood', icon: '💭', label: 'Mood' },
-  { id: 'tags', icon: '🏷️', label: 'Tags' },
   { id: 'health', icon: '❤️', label: 'Health' },
   { id: 'privacy', icon: '🔒', label: 'Privacy' },
   { id: 'settings', icon: '⚙️', label: 'Settings' },
@@ -39,17 +28,12 @@ const ROW_DEFS: { id: Exclude<YouView, 'list'>; icon: string; label: string }[] 
 
 const TITLES: Record<YouView, string> = {
   list: 'You',
-  history: 'History',
-  insights: 'Insights',
-  pain: 'Pain',
-  mood: 'Mood',
-  tags: 'Tags',
   health: 'Health',
   privacy: 'Privacy',
   settings: 'Settings',
 };
 
-export function YouSheet({ visible, onClose, onCalendarDayLog }: YouSheetProps) {
+export function YouSheet({ visible, onClose }: YouSheetProps) {
   const [view, setView] = useState<YouView>('list');
 
   const handleClose = () => {
@@ -105,11 +89,6 @@ export function YouSheet({ visible, onClose, onCalendarDayLog }: YouSheetProps) 
           </ScrollView>
         )}
 
-        {view === 'history' && <HistoryView onDayLog={onCalendarDayLog} />}
-        {view === 'insights' && <InsightsScreen />}
-        {view === 'pain' && <PainScreen />}
-        {view === 'mood' && <MoodScreen />}
-        {view === 'tags' && <TagManagerScreen />}
         {view === 'health' && <HealthIntegrationScreen />}
         {view === 'privacy' && <PrivacyScreen />}
         {view === 'settings' && <SettingsScreen />}

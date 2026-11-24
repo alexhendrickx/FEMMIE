@@ -25,7 +25,7 @@ export const OUTLOOK_WINDOW_RADIUS = 2;
 /** A 1–5 scale at/below this mean is "low" (energy, sleep quality). */
 const LOW_SCALE_CUTOFF = 2.5;
 
-const PAIN_CATEGORIES = ['cramps', 'back_pain', 'headache'];
+const PAIN_CATEGORIES = ['cramps', 'headache'];
 
 export interface Observation {
   signal: 'energy' | 'sleep' | 'mood' | 'pain';
@@ -69,7 +69,7 @@ function hasPainDay(logs: DailyLog[]): boolean {
       if (e.categoryId === 'cramps') {
         return typeof e.value === 'number' && e.value >= SCALE_PRESENT_THRESHOLD;
       }
-      if (e.categoryId === 'back_pain' || e.categoryId === 'headache') return e.value === true;
+      if (e.categoryId === 'headache') return e.value === true;
       return false;
     }),
   );

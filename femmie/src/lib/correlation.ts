@@ -65,22 +65,20 @@ export interface Correlation {
 }
 
 export interface CorrelationOptions {
-  /** Map symptomId → display name. Custom tags (F2-13) merge in here. */
-  labels?: Record<string, string>;
   /**
    * Override which category ids are eligible. By default only NEGATIVE signals
-   * correlate: built-in `symptoms`/`mood` categories, plus any unknown id (custom
-   * tags — F2-13). `flow` categories define the cycle itself, and `lifestyle`
-   * categories (sleep hours/quality, energy, exercise) are neutral/positive signals
-   * — counting a good night's sleep as a "symptom occurrence" would be nonsense.
+   * correlate: built-in `symptoms`/`mood` categories. `flow` categories define
+   * the cycle itself, and `lifestyle` categories (sleep quality, energy) are
+   * neutral/positive signals — counting a good night's sleep as a "symptom
+   * occurrence" would be nonsense.
    */
   isSymptom?: (categoryId: string) => boolean;
 }
 
-/** Default eligibility: negative built-in symptoms/moods, and all custom tags. */
+/** Default eligibility: negative built-in symptoms/moods only. */
 export function defaultIsSymptom(categoryId: string): boolean {
   const cat = CATEGORY_MAP.get(categoryId);
-  if (!cat) return true; // custom tag (F2-13) → treat as a user-defined symptom
+  if (!cat) return false; // legacy id from a removed logging surface — never a symptom
   return cat.group === 'symptoms' || cat.group === 'mood';
 }
 
@@ -105,12 +103,12 @@ function titleCase(id: string): string {
 }
 
 /**
- * Resolve a symptom's display name: a supplied label (custom tags — F2-13) wins,
- * then the built-in category label, then a title-cased id. Shared by all insight
- * features so a symptom reads identically everywhere.
+ * Resolve a symptom's display name: the built-in category label, then a
+ * title-cased id. Shared by all insight features so a symptom reads
+ * identically everywhere.
  */
-export function symptomLabel(id: string, labels?: Record<string, string>): string {
-  return labels?.[id] ?? CATEGORY_MAP.get(id)?.label ?? titleCase(id);
+export function symptomLabel(id: string): string {
+  return CATEGORY_MAP.get(id)?.label ?? titleCase(id);
 }
 
 function dominantPhaseOf(counts: PhaseCounts): CyclePhase {
@@ -172,7 +170,7 @@ export function computeCorrelations(
     const cyclesInDominant = cyclesWithInPhase.get(id)![dominantPhase].size;
     const confidence =
       cyclesObserved >= MIN_CYCLES_FOR_PATTERN ? 'sufficient' : 'low_sample';
-    const symptomName = symptomLabel(id, options.labels);
+    const symptomName = symptomLabel(id);
 
     out.push({
       symptomId: id,
@@ -201,24 +199,19 @@ function buildPattern(
   return `Your ${name.toLowerCase()} appeared during your ${PHASE_LABEL[dominantPhase]} phase in ${cyclesInDominant} of ${cyclesObserved} cycles.`;
 }
 
-/** Feedback persisted per symptom; `helpful: false` hides it from future surfacing. */
-export type CorrelationFeedback = Record<string, { helpful: boolean }>;
-
 /**
- * The patterns worth showing the user: sufficient sample size AND not dismissed
- * as "not relevant". Sorted by how concentrated the pattern is (strongest first).
+ * The patterns worth showing the user: sufficient sample size. Sorted by how
+ * concentrated the pattern is (strongest first).
  *
  * CONSTRAINT (F2-07): returns an empty array — never throws — when there isn't
  * enough data.
  */
 export function surfaceCorrelations(
   logs: DailyLog[],
-  feedback: CorrelationFeedback = {},
   options: CorrelationOptions = {},
 ): Correlation[] {
   return computeCorrelations(logs, options)
     .filter((c) => c.confidence === 'sufficient')
-    .filter((c) => feedback[c.symptomId]?.helpful !== false)
     .sort(
       (a, b) =>
         b.cyclesInDominant / b.cyclesObserved -

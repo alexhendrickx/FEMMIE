@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
   SafeAreaView,
   View,
@@ -16,10 +16,9 @@ import { OnboardingScreen, ReconnectBanner } from './src/components/Onboarding';
 import { CycleSummary } from './src/components/CycleRing';
 import { TodayOutlookCard } from './src/components/TodayOutlook';
 import { DailyFlow } from './src/components/DailyFlow';
-import { DailyLogSheet } from './src/components/DailyLog/DailyLogSheet';
 import { YouSheet } from './src/components/You';
 import { CalendarModal } from './src/components/Calendar';
-import { useLogStore } from './src/store/logStore';
+import { useLogStore, isLogStoreHydrationSettled, onLogStoreHydrationSettled } from './src/store/logStore';
 import { colors } from './src/theme/colors';
 import {
   extractPeriodStarts,
@@ -28,30 +27,28 @@ import {
   cyclePhase,
 } from './src/lib/cycle';
 import { todayISO } from './src/components/CycleCalendar/utils';
+import { shouldShowOnboarding } from './src/lib/onboarding';
 
-// ── Main app (shown after auth) ───────────────────────────────────────────────
+// ── Main app (shown after onboarding) ───────────────────────────────────────────────
 function MainApp() {
   const { isOffline } = useAuth();
   const [youOpen, setYouOpen] = useState(false);
   const [flowOpen, setFlowOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const logs = useLogStore((s) => s.logs);
   const hasLoggedToday = useLogStore((s) => s.hasLoggedToday);
   const alreadyLogged = hasLoggedToday();
   const reminderEnabled = useLogStore((s) => s.reminderEnabled);
-  const reminderTime = useLogStore((s) => s.reminderTime);
-  const quickSymptomIds = useLogStore((s) => s.quickSymptomIds);
 
   // Keep the daily reminder scheduled, and open the flow straight away when the user
   // taps the notification (UX decision #11).
   useEffect(() => {
     if (reminderEnabled) {
-      void scheduleBedtimeReminder(reminderTime.hour, reminderTime.minute);
+      void scheduleBedtimeReminder();
     }
     const sub = Notifications.addNotificationResponseReceivedListener(() => setFlowOpen(true));
     return () => sub.remove();
-  }, [reminderEnabled, reminderTime.hour, reminderTime.minute]);
+  }, [reminderEnabled]);
 
   // Everything the Today screen + flow needs, derived from the real store.
   const today = todayISO();
@@ -96,14 +93,6 @@ function MainApp() {
                 {alreadyLogged ? '✓  Logged — update' : '＋  Start today'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.detailLink}
-              onPress={() => setDetailOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Log in detail"
-            >
-              <Text style={styles.detailLinkText}>Log in detail</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -112,27 +101,11 @@ function MainApp() {
           date={today}
           cycleDay={derived.cycleDay}
           isLikelyPeriod={derived.isLikelyPeriod}
-          quickSymptomIds={quickSymptomIds}
           onClose={() => setFlowOpen(false)}
           onSaved={() => setFlowOpen(false)}
         />
 
-        <DailyLogSheet
-          visible={detailOpen}
-          date={today}
-          cycleDay={derived.cycleDay ?? 1}
-          onClose={() => setDetailOpen(false)}
-          onSaved={() => setDetailOpen(false)}
-        />
-
-        <YouSheet
-          visible={youOpen}
-          onClose={() => setYouOpen(false)}
-          onCalendarDayLog={() => {
-            setYouOpen(false);
-            setFlowOpen(true);
-          }}
-        />
+        <YouSheet visible={youOpen} onClose={() => setYouOpen(false)} />
 
         <CalendarModal
           visible={calendarOpen}
@@ -147,39 +120,38 @@ function MainApp() {
   );
 }
 
-// ── Auth gate ─────────────────────────────────────────────────────────────────
+// ── Onboarding gate ────────────────────────────────────────────────────────────────
 function AppGate() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const [onboardingDone, setOnboardingDone] = useState(false);
+  const { isLoading } = useAuth();
+  const onboardingDone = useLogStore((s) => s.onboardingDone);
+  const completeOnboarding = useLogStore((s) => s.completeOnboarding);
+  // The encrypted store hydrates asynchronously; wait for it so a returning user
+  // never sees a flash of onboarding.
+  const hydrated = useSyncExternalStore(onLogStoreHydrationSettled, isLogStoreHydrationSettled);
   const saveLog = useLogStore((s) => s.saveLog);
   const setCycleLengthPref = useLogStore((s) => s.setCycleLengthPref);
-  const setQuickSymptoms = useLogStore((s) => s.setQuickSymptoms);
 
   // Store the stated cycle length and seed the first period start, so predictions and
   // the calendar are alive from day one (UX decision #16) instead of an empty ring.
-  // Also pin the user's chosen 5–8 quick symptoms (decisions #2/#14/#17).
-  const finishOnboarding = (
-    firstCycleDate: string | null,
-    cycleLength: number,
-    quickSymptomIds: string[],
-  ) => {
+  const finishOnboarding = (firstCycleDate: string | null, cycleLength: number) => {
     setCycleLengthPref(cycleLength);
-    setQuickSymptoms(quickSymptomIds);
-    if (firstCycleDate) {
+    // Never overwrite a day that already has a log.
+    if (firstCycleDate && !useLogStore.getState().logs[firstCycleDate]) {
       saveLog({
         date: firstCycleDate,
         cycleDay: 1,
         entries: [{ categoryId: 'menstrual_flow', value: 'medium' }],
       });
     }
-    setOnboardingDone(true);
+    completeOnboarding();
   };
 
-  if (isLoading) {
+  if (isLoading || !hydrated) {
     return <View style={styles.splash} />;
   }
 
-  if (!isAuthenticated || !onboardingDone) {
+  // No account needed: the app is local-first. Signed in or not, onboarding is done once.
+  if (shouldShowOnboarding({ onboardingDone, hydrated })) {
     return (
       <SafeAreaView style={styles.safe}>
         <OnboardingScreen onComplete={finishOnboarding} />
@@ -259,14 +231,5 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     fontSize: 16,
     fontWeight: '700',
-  },
-  detailLink: {
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  detailLinkText: {
-    color: colors.textMuted,
-    fontSize: 14,
-    fontWeight: '600',
   },
 });

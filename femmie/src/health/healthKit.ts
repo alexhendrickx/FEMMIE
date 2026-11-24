@@ -88,10 +88,6 @@ export async function writeToHealthKit(
     switch (dataTypeId) {
       case 'cycle_start':
         return await writeMenstrualFlow(HK, value as number, date);
-      case 'ovulation':
-        return await writeOvulation(HK, date);
-      case 'sexual_activity':
-        return await writeSexualActivity(HK, date);
       default:
         return false;
     }
@@ -163,24 +159,6 @@ function writeMenstrualFlow(HK: any, flowLevel: number, date: Date): Promise<boo
   return new Promise((resolve) => {
     HK.saveMenstrualCycleSample(
       { value: flowLevel, startDate: date.toISOString(), endDate: date.toISOString() },
-      (err: any) => resolve(!err),
-    );
-  });
-}
-
-function writeOvulation(HK: any, date: Date): Promise<boolean> {
-  return new Promise((resolve) => {
-    HK.saveOvulationTestSample(
-      { value: 2 /* positive */, startDate: date.toISOString(), endDate: date.toISOString() },
-      (err: any) => resolve(!err),
-    );
-  });
-}
-
-function writeSexualActivity(HK: any, date: Date): Promise<boolean> {
-  return new Promise((resolve) => {
-    HK.saveSexualActivitySample(
-      { protectionUsed: false, startDate: date.toISOString(), endDate: date.toISOString() },
       (err: any) => resolve(!err),
     );
   });

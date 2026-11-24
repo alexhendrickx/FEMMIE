@@ -1,11 +1,10 @@
 import * as Notifications from 'expo-notifications';
 
 const BEDTIME_REMINDER_ID = 'femmie-bedtime-reminder';
+const REMINDER_HOUR = 21;
+const REMINDER_MINUTE = 30;
 
-export async function scheduleBedtimeReminder(
-  hour: number,
-  minute: number,
-): Promise<void> {
+export async function scheduleBedtimeReminder(): Promise<void> {
   const { status } = await Notifications.requestPermissionsAsync();
   if (status !== 'granted') return;
 
@@ -21,8 +20,8 @@ export async function scheduleBedtimeReminder(
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour,
-      minute,
+      hour: REMINDER_HOUR,
+      minute: REMINDER_MINUTE,
     },
   });
 }

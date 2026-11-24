@@ -6,19 +6,15 @@ export type BooleanValue = boolean;
 
 export type EntryValue = FlowValue | ScaleValue | MoodValue | HoursValue | BooleanValue;
 
-export type InputType = 'flow' | 'scale' | 'mood' | 'boolean' | 'hours';
-export type CategoryGroup = 'flow' | 'symptoms' | 'mood' | 'lifestyle';
+export type InputType = 'flow' | 'scale' | 'mood' | 'boolean' | 'hours' | 'number';
+export type CategoryGroup = 'flow' | 'symptoms' | 'mood' | 'lifestyle' | 'fertility';
 
 export interface Category {
   id: string;
   label: string;
   group: CategoryGroup;
   inputType: InputType;
-  /** Hidden outside the period window (cycleDay <= periodWindowDays) */
-  periodOnly: boolean;
   icon: string;
-  /** One-line, plain-language meaning — shown in the quick-symptom picker (decision #14). */
-  explain?: string;
 }
 
 export interface LogEntry {
@@ -31,11 +27,4 @@ export interface DailyLog {
   cycleDay: number;
   entries: LogEntry[];
   savedAt: string;    // ISO timestamp
-}
-
-export interface ShortcutCombo {
-  id: string;
-  label: string;
-  entries: LogEntry[];
-  usageCount: number;
 }

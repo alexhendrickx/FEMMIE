@@ -1,1 +1,0 @@
-export { QuickSymptomPicker } from './QuickSymptomPicker';

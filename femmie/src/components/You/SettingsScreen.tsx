@@ -1,56 +1,40 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useLogStore } from '../../store/logStore';
 import { scheduleBedtimeReminder, cancelBedtimeReminder } from '../../utils/notifications';
 import { colors } from '../../theme/colors';
-import { CATEGORY_MAP } from '../../data/categories';
-import { QuickSymptomPicker } from '../QuickSymptoms';
 
 export function SettingsScreen() {
-  const { isOffline, logout } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const reminderEnabled = useLogStore((s) => s.reminderEnabled);
-  const reminderTime = useLogStore((s) => s.reminderTime);
   const setReminder = useLogStore((s) => s.setReminder);
   const phaseContentMuted = useLogStore((s) => s.phaseContentMuted);
   const setPhaseContentMuted = useLogStore((s) => s.setPhaseContentMuted);
-  const quickSymptomIds = useLogStore((s) => s.quickSymptomIds);
-  const setQuickSymptoms = useLogStore((s) => s.setQuickSymptoms);
-  const [editingSymptoms, setEditingSymptoms] = useState(false);
-
-  const timeLabel = `${String(reminderTime.hour).padStart(2, '0')}:${String(reminderTime.minute).padStart(2, '0')}`;
-  const symptomSummary = quickSymptomIds
-    .map((id) => CATEGORY_MAP.get(id)?.label ?? id)
-    .join(' · ');
 
   const toggleReminder = async (value: boolean) => {
     setReminder(value);
-    if (value) await scheduleBedtimeReminder(reminderTime.hour, reminderTime.minute);
+    if (value) await scheduleBedtimeReminder();
     else await cancelBedtimeReminder();
   };
-
-  if (editingSymptoms) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.editTitle}>Your daily check-ins</Text>
-        <QuickSymptomPicker
-          initial={quickSymptomIds}
-          ctaLabel="Save"
-          onDone={(ids) => {
-            setQuickSymptoms(ids);
-            setEditingSymptoms(false);
-          }}
-        />
-      </View>
-    );
-  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Account</Text>
-        <Text style={styles.line}>Signed in</Text>
-        {isOffline && <Text style={styles.hint}>Offline — changes will sync later</Text>}
+        <View style={styles.card}>
+          {isAuthenticated ? (
+            <>
+              <Text style={styles.rowLabel}>Signed in</Text>
+              <Text style={styles.hint}>Your logs stay on this phone. Backup is coming soon.</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.rowLabel}>Backup is coming soon</Text>
+              <Text style={styles.hint}>Your data stays on this phone.</Text>
+            </>
+          )}
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -58,7 +42,7 @@ export function SettingsScreen() {
         <View style={styles.row}>
           <View style={styles.rowTextWrap}>
             <Text style={styles.rowLabel}>Daily reminder</Text>
-            <Text style={styles.hint}>A gentle nudge every day at {timeLabel}</Text>
+            <Text style={styles.hint}>A gentle nudge at 21:30 each evening</Text>
           </View>
           <Switch
             value={reminderEnabled}
@@ -85,30 +69,21 @@ export function SettingsScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Daily check-ins</Text>
-        <TouchableOpacity
-          style={styles.row}
-          onPress={() => setEditingSymptoms(true)}
-          accessibilityRole="button"
-          accessibilityLabel="Edit your daily check-ins"
-        >
-          <View style={styles.rowTextWrap}>
-            <Text style={styles.rowLabel}>Your quick symptoms</Text>
-            <Text style={styles.hint} numberOfLines={2}>{symptomSummary}</Text>
-          </View>
-          <Text style={styles.chevron}>›</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity
-        style={styles.logoutButton}
-        onPress={() => { void logout(); }}
-        accessibilityRole="button"
-        accessibilityLabel="Log out"
-      >
-        <Text style={styles.logoutText}>Log out</Text>
-      </TouchableOpacity>
+      {isAuthenticated && (
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={() => { void logout(); }}
+            accessibilityRole="button"
+            accessibilityLabel="Log out"
+          >
+            <Text style={styles.logoutText}>Log out</Text>
+          </TouchableOpacity>
+          <Text style={[styles.hint, styles.center]}>
+            Logging out keeps your logs on this phone.
+          </Text>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -123,7 +98,16 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textTransform: 'uppercase',
   },
-  line: { fontSize: 15, color: colors.text },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 2,
+  },
+  center: { textAlign: 'center' },
   hint: { fontSize: 13, color: colors.textSecondary },
   row: {
     flexDirection: 'row',
@@ -138,15 +122,6 @@ const styles = StyleSheet.create({
   },
   rowTextWrap: { flex: 1, paddingRight: 12, gap: 2 },
   rowLabel: { fontSize: 15, color: colors.text },
-  chevron: { fontSize: 22, color: colors.textMuted },
-  editTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.text,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 4,
-  },
   logoutButton: {
     backgroundColor: colors.surface,
     borderRadius: 12,
