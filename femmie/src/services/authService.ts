@@ -1,145 +1,54 @@
 /**
- * Thin wrapper around the auth API.
- * All network calls go here; components never fetch directly.
+ * Thin wrapper around Supabase Auth — email+password.
+ * Session persistence/refresh is handled by the `supabase` client itself
+ * (see services/supabase.ts); this module just exposes the three verbs the
+ * app needs plus a session getter.
  */
-import * as SecureStore from 'expo-secure-store';
-import type { AuthTokens, RegisterBeginResponse, LoginBeginResponse } from '../types/auth';
+import { supabase } from './supabase';
+import type { AuthSession } from '../types/auth';
 
-const API_BASE = 'https://api.femmie.app';
-
-const TOKEN_KEY   = 'femmie_token';
-const REFRESH_KEY = 'femmie_refresh';
-
-/**
- * Dev-only offline auth.
- *
- * There is no reachable auth backend yet, so in development builds we complete
- * the WebAuthn ceremony locally: the biometric step still runs (via
- * passkeyService's dev fallback) but the server round-trips are stubbed out so
- * onboarding can finish on-device. `__DEV__` is `false` in any release build,
- * so production always takes the real `fetch` path — this never weakens
- * passkey/PASETO auth in a shipped app.
- */
-const AUTH_OFFLINE_MODE = __DEV__;
-const OFFLINE_RP_ID = 'femmie.app';
-
-function offlineToken(kind: 'access' | 'refresh'): string {
-  return `dev.offline.${kind}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
+function toSession(session: { user: { id: string }; access_token: string; refresh_token: string } | null): AuthSession | null {
+  if (!session) return null;
+  return {
+    userId: session.user.id,
+    accessToken: session.access_token,
+    refreshToken: session.refresh_token,
+  };
 }
 
-function offlineTokens(): AuthTokens {
-  return { token: offlineToken('access'), refreshToken: offlineToken('refresh') };
+export async function signUp(email: string, password: string): Promise<AuthSession> {
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) throw error;
+  const session = toSession(data.session as never);
+  if (!session) throw new Error('Sign-up succeeded but no session was returned');
+  return session;
 }
 
-// ─── Token storage ────────────────────────────────────────────────────────────
-
-export async function storeTokens(tokens: AuthTokens): Promise<void> {
-  await SecureStore.setItemAsync(TOKEN_KEY, tokens.token);
-  await SecureStore.setItemAsync(REFRESH_KEY, tokens.refreshToken);
+export async function signIn(email: string, password: string): Promise<AuthSession> {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  const session = toSession(data.session as never);
+  if (!session) throw new Error('Sign-in succeeded but no session was returned');
+  return session;
 }
 
-export async function loadTokens(): Promise<AuthTokens | null> {
-  const token        = await SecureStore.getItemAsync(TOKEN_KEY);
-  const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
-  if (!token || !refreshToken) return null;
-  return { token, refreshToken };
-}
-
-export async function clearTokens(): Promise<void> {
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
-  await SecureStore.deleteItemAsync(REFRESH_KEY);
-}
-
-// ─── Registration ─────────────────────────────────────────────────────────────
-
-export async function registerBegin(): Promise<RegisterBeginResponse> {
-  if (AUTH_OFFLINE_MODE) {
-    return {
-      challenge: offlineToken('access'),
-      rpId: OFFLINE_RP_ID,
-      userId: `dev-user-${Date.now()}`,
-    };
-  }
-  const res = await fetch(`${API_BASE}/auth/register/begin`, { method: 'POST' });
-  if (!res.ok) throw new Error(`register/begin failed: ${res.status}`);
-  return res.json();
-}
-
-export async function registerFinish(
-  userId: string,
-  challenge: string,
-  credential: unknown,
-): Promise<AuthTokens> {
-  if (AUTH_OFFLINE_MODE) return offlineTokens();
-  const res = await fetch(`${API_BASE}/auth/register/finish`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, challenge, credential }),
+export async function signInWithApple(identityToken: string): Promise<AuthSession> {
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: 'apple',
+    token: identityToken,
   });
-  if (!res.ok) throw new Error(`register/finish failed: ${res.status}`);
-  return res.json();
+  if (error) throw error;
+  const session = toSession(data.session as never);
+  if (!session) throw new Error('Apple sign-in succeeded but no session was returned');
+  return session;
 }
 
-// ─── Login ────────────────────────────────────────────────────────────────────
-
-export async function loginBegin(): Promise<LoginBeginResponse> {
-  if (AUTH_OFFLINE_MODE) return { challenge: offlineToken('access') };
-  const res = await fetch(`${API_BASE}/auth/login/begin`, { method: 'POST' });
-  if (!res.ok) throw new Error(`login/begin failed: ${res.status}`);
-  return res.json();
+export async function signOut(): Promise<void> {
+  await supabase.auth.signOut();
 }
 
-export async function loginFinish(
-  challenge: string,
-  assertion: unknown,
-): Promise<AuthTokens> {
-  if (AUTH_OFFLINE_MODE) return offlineTokens();
-  const res = await fetch(`${API_BASE}/auth/login/finish`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ challenge, assertion }),
-  });
-  if (!res.ok) throw new Error(`login/finish failed: ${res.status}`);
-  return res.json();
-}
-
-// ─── Token refresh ────────────────────────────────────────────────────────────
-
-export async function refreshAccessToken(refreshToken: string): Promise<string | null> {
-  if (AUTH_OFFLINE_MODE) {
-    const fresh = offlineToken('access');
-    await storeTokens({ token: fresh, refreshToken });
-    return fresh;
-  }
-  try {
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
-    });
-    if (!res.ok) return null;
-    const { token, refreshToken: newRefresh } = await res.json() as AuthTokens;
-    await storeTokens({ token, refreshToken: newRefresh });
-    return token;
-  } catch {
-    return null; // Offline — caller shows reconnect banner, never logs out
-  }
-}
-
-// ─── Logout ───────────────────────────────────────────────────────────────────
-
-export async function logout(token: string): Promise<void> {
-  if (AUTH_OFFLINE_MODE) {
-    await clearTokens();
-    return;
-  }
-  try {
-    await fetch(`${API_BASE}/auth/session`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  } catch {
-    // Fire-and-forget; local tokens are cleared regardless
-  }
-  await clearTokens();
+/** Current session, if any — used on app bootstrap. */
+export async function getSession(): Promise<AuthSession | null> {
+  const { data } = await supabase.auth.getSession();
+  return toSession(data.session as never);
 }

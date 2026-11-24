@@ -8,8 +8,9 @@
  * libsodium's own test suite; real round-trip crypto tests are a follow-up
  * gated on adding a libsodium dev dependency.)
  */
-import { encrypt, decrypt, configureEncryption } from '../encryption';
+import { encrypt, decrypt, configureEncryption, wrapDekWithPassphrase, unwrapDekWithPassphrase } from '../encryption';
 import type { EncryptedPayload } from '../../types/encryption';
+import type { RecoveryKeyMaterial } from '../../types/auth';
 import type { DailyLog } from '../../types/logging';
 
 const sampleLog: DailyLog = {
@@ -81,5 +82,37 @@ describe('plaintext-leak invariant', () => {
     expect(serialised).not.toContain('menstrual_flow');
     expect(serialised).not.toContain('heavy');
     expect(serialised).not.toContain('"mood"');
+  });
+});
+
+describe('passphrase wrap/unwrap', () => {
+  it('throws when there is no DEK or libsodium available', async () => {
+    // In test environment with no libsodium and no DEK loaded, wrap should fail.
+    await expect(wrapDekWithPassphrase('test-passphrase')).rejects.toThrow(
+      /Cannot wrap DEK: encryption not ready/,
+    );
+  });
+
+  it('unwrapDekWithPassphrase returns false when sodium is unavailable', async () => {
+    // In test environment with no libsodium, unwrap degrades gracefully.
+    const fakeMaterial: RecoveryKeyMaterial = {
+      wrappedDek: 'aGVsbG8=',
+      salt: 'd29ybGQ=',
+      kdfParams: { opslimit: 1, memlimit: 1 },
+    };
+    const result = await unwrapDekWithPassphrase(fakeMaterial, 'test-passphrase');
+    expect(result).toBe(false);
+  });
+
+  it('never includes the passphrase or DEK bytes in a thrown error', async () => {
+    const secretPassphrase = 'MY_SECRET_PASSPHRASE_12345';
+    try {
+      await wrapDekWithPassphrase(secretPassphrase);
+      fail('Expected wrapDekWithPassphrase to throw');
+    } catch (err) {
+      const errorMessage = String(err);
+      expect(errorMessage).not.toContain(secretPassphrase);
+      expect(errorMessage).not.toContain('MY_SECRET_PASSPHRASE');
+    }
   });
 });

@@ -1,28 +1,21 @@
-export interface AuthTokens {
-  token: string;
+export interface AuthSession {
+  userId: string;
+  accessToken: string;
   refreshToken: string;
 }
 
 export interface AuthState {
-  tokens: AuthTokens | null;
-  accountId: string | null;
+  session: AuthSession | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isOffline: boolean;
 }
 
-export interface RegisterBeginResponse {
-  challenge: string;
-  rpId: string;
-  userId: string;
-}
-
-export interface LoginBeginResponse {
-  challenge: string;
-}
-
-export interface PasskeyCredential {
-  credentialId: string;
-  publicKey: string;
-  deviceType: 'singleDevice' | 'multiDevice';
+export interface RecoveryKeyMaterial {
+  /** base64-encoded, libsodium crypto_secretbox-wrapped DEK */
+  wrappedDek: string;
+  /** base64-encoded Argon2id salt */
+  salt: string;
+  /** Argon2id KDF params needed to re-derive the same KEK */
+  kdfParams: { opslimit: number; memlimit: number };
 }

@@ -14,13 +14,13 @@ import { useEncryptionStore } from '../../store/encryptionStore';
 import { usePainStore } from '../../store/painStore';
 import { useMoodStore } from '../../store/moodStore';
 import { useTagStore } from '../../store/tagStore';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../services/supabase';
 import { colors } from '../../theme/colors';
 import type { WipeMode } from '../../types/encryption';
 
-// Replace with your actual API base + auth token logic
-const API_BASE = 'https://api.femmie.app';
-
 export function PrivacyScreen() {
+  const { session } = useAuth();
   const {
     cloudSyncEnabled,
     syncStatus,
@@ -57,17 +57,23 @@ export function PrivacyScreen() {
       usePainStore.getState().clearAll();
       await usePainStore.persist.clearStorage();
 
-      // 3. Notify backend (fire-and-forget — local is already gone)
-      fetch(`${API_BASE}/account`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gracePeriod: mode === 'soft' }),
-      }).catch(() => {}); // If offline, backend will catch it on next login attempt
+      // 3. Delete this user's rows from Supabase (fire-and-forget — local is already gone)
+      if (session) {
+        const userId = session.userId;
+        supabase.from('logs').delete().eq('user_id', userId).then(
+          () => {},
+          () => {}, // Offline — Supabase has nothing to clean up if sync never ran
+        );
+        supabase.from('key_material').delete().eq('user_id', userId).then(
+          () => {},
+          () => {},
+        );
+      }
 
       setWiping(false);
       // Navigate away — app should show onboarding/empty state
     },
-    [requestWipe],
+    [requestWipe, session],
   );
 
   const syncLabel =

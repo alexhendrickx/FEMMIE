@@ -1,171 +1,92 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import { AppState } from 'react-native';
-import {
-  loadTokens,
-  storeTokens,
-  clearTokens,
-  refreshAccessToken,
-  logout as apiLogout,
-} from '../services/authService';
-import {
-  createPasskey,
-  getPasskey,
-  hasExistingPasskey,
-} from '../services/passkeyService';
-import {
-  registerBegin,
-  registerFinish,
-  loginBegin,
-  loginFinish,
-} from '../services/authService';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { signUp, signIn, signInWithApple, signOut, getSession } from '../services/authService';
+import { supabase } from '../services/supabase';
+import { pullFromCloud } from '../services/cloudSync';
+import { initLocalDEK, isEncryptionReady } from '../services/encryption';
 import type { AuthState } from '../types/auth';
 
 interface AuthContextValue extends AuthState {
-  register: () => Promise<void>;
-  login: () => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  loginWithApple: (identityToken: string) => Promise<void>;
   logout: () => Promise<void>;
-  hasPasskey: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({
-    tokens: null,
-    accountId: null,
+    session: null,
     isAuthenticated: false,
     isLoading: true,
     isOffline: false,
   });
-  const [hasPasskey, setHasPasskey] = useState(false);
-  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Decode accountId from PASETO payload (base64 middle segment) ─────────────
-  function extractAccountId(token: string): string | null {
-    try {
-      const parts = token.split('.');
-      // PASETO v4.local: v4.local.<payload>.<optional-footer>
-      // payload is not base64-decodable as plaintext (it's encrypted) —
-      // server always returns accountId as a separate field or we store it separately.
-      // We store it in SecureStore alongside the token.
-      void parts;
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
-  // ── Silent refresh whenever app comes to foreground ──────────────────────────
-  const silentRefresh = useCallback(async (refreshToken: string) => {
-    const newToken = await refreshAccessToken(refreshToken);
-    if (newToken) {
-      setState((s) => ({
-        ...s,
-        tokens: { token: newToken, refreshToken },
-        isOffline: false,
-      }));
-    } else {
-      // Offline — keep user authenticated, just flag it
-      setState((s) => ({ ...s, isOffline: true }));
-    }
-  }, []);
-
-  // ── Bootstrap: load persisted tokens on mount ────────────────────────────────
   useEffect(() => {
     (async () => {
-      const [tokens, passkeyExists] = await Promise.all([
-        loadTokens(),
-        hasExistingPasskey(),
-      ]);
-
-      setHasPasskey(passkeyExists);
-
-      if (!tokens) {
-        setState((s) => ({ ...s, isLoading: false }));
-        return;
-      }
-
-      // Try a silent refresh immediately — if offline, keep logged in
-      const newToken = await refreshAccessToken(tokens.refreshToken);
-      const activeToken = newToken ?? tokens.token;
-
+      const session = await getSession();
       setState({
-        tokens: { token: activeToken, refreshToken: tokens.refreshToken },
-        accountId: null, // resolved server-side via PASETO
-        isAuthenticated: true,
+        session,
+        isAuthenticated: session !== null,
         isLoading: false,
-        isOffline: !newToken,
+        isOffline: false,
       });
-    })();
-  }, []);
 
-  // ── Refresh on foreground ─────────────────────────────────────────────────────
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active' && state.tokens?.refreshToken) {
-        silentRefresh(state.tokens.refreshToken);
+      // Fire-and-forget: pull remote logs if session exists and DEK is ready
+      if (session && isEncryptionReady()) {
+        void pullFromCloud(session.userId);
       }
-    });
-    return () => sub.remove();
-  }, [state.tokens?.refreshToken, silentRefresh]);
+    })();
 
-  // ── Register ──────────────────────────────────────────────────────────────────
-  const register = useCallback(async () => {
-    const { challenge, rpId, userId } = await registerBegin();
-    const credential = await createPasskey(challenge, userId, rpId);
-    const tokens = await registerFinish(userId, challenge, credential);
-    await storeTokens(tokens);
-    setHasPasskey(true);
-    setState({
-      tokens,
-      accountId: userId,
-      isAuthenticated: true,
-      isLoading: false,
-      isOffline: false,
+    // supabase-js's client keeps the session fresh in the background (auto
+    // refresh) and tells us whenever it changes — this is the direct
+    // replacement for the old hand-rolled silent-refresh-on-foreground effect.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, authSession) => {
+      setState((s) => ({
+        ...s,
+        session: authSession
+          ? {
+              userId: authSession.user.id,
+              accessToken: authSession.access_token,
+              refreshToken: authSession.refresh_token,
+            }
+          : null,
+        isAuthenticated: authSession !== null,
+        isLoading: false,
+      }));
     });
+    return () => sub.subscription.unsubscribe();
   }, []);
 
-  // ── Login ─────────────────────────────────────────────────────────────────────
-  const login = useCallback(async () => {
-    const { challenge } = await loginBegin();
-    const assertion = await getPasskey(challenge, 'femmie.app');
-    const tokens = await loginFinish(challenge, assertion);
-    await storeTokens(tokens);
-    setState({
-      tokens,
-      accountId: null,
-      isAuthenticated: true,
-      isLoading: false,
-      isOffline: false,
-    });
-  }, []);
+  const register = async (email: string, password: string) => {
+    const session = await signUp(email, password);
+    setState({ session, isAuthenticated: true, isLoading: false, isOffline: false });
+    // The encryption key is handled silently on-device; no user passphrase.
+    await initLocalDEK();
+    if (session) void pullFromCloud(session.userId);
+  };
 
-  // ── Logout ────────────────────────────────────────────────────────────────────
-  const logout = useCallback(async () => {
-    if (state.tokens?.token) {
-      await apiLogout(state.tokens.token);
-    } else {
-      await clearTokens();
-    }
-    if (refreshTimer.current) clearTimeout(refreshTimer.current);
-    setState({
-      tokens: null,
-      accountId: null,
-      isAuthenticated: false,
-      isLoading: false,
-      isOffline: false,
-    });
-  }, [state.tokens]);
+  const login = async (email: string, password: string) => {
+    const session = await signIn(email, password);
+    setState({ session, isAuthenticated: true, isLoading: false, isOffline: false });
+    await initLocalDEK();
+    if (session) void pullFromCloud(session.userId);
+  };
+
+  const loginWithApple = async (identityToken: string) => {
+    const session = await signInWithApple(identityToken);
+    setState({ session, isAuthenticated: true, isLoading: false, isOffline: false });
+    await initLocalDEK();
+    if (session) void pullFromCloud(session.userId);
+  };
+
+  const logout = async () => {
+    await signOut();
+    setState({ session: null, isAuthenticated: false, isLoading: false, isOffline: false });
+  };
 
   return (
-    <AuthContext.Provider value={{ ...state, register, login, logout, hasPasskey }}>
+    <AuthContext.Provider value={{ ...state, register, login, loginWithApple, logout }}>
       {children}
     </AuthContext.Provider>
   );

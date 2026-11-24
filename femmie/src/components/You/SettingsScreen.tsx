@@ -8,7 +8,7 @@ import { CATEGORY_MAP } from '../../data/categories';
 import { QuickSymptomPicker } from '../QuickSymptoms';
 
 export function SettingsScreen() {
-  const { hasPasskey, isOffline, logout } = useAuth();
+  const { isOffline, logout } = useAuth();
   const reminderEnabled = useLogStore((s) => s.reminderEnabled);
   const reminderTime = useLogStore((s) => s.reminderTime);
   const setReminder = useLogStore((s) => s.setReminder);
@@ -49,9 +49,7 @@ export function SettingsScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Account</Text>
-        <Text style={styles.line}>
-          {hasPasskey ? 'Signed in with a passkey' : 'Signed in'}
-        </Text>
+        <Text style={styles.line}>Signed in</Text>
         {isOffline && <Text style={styles.hint}>Offline — changes will sync later</Text>}
       </View>
 

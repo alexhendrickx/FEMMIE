@@ -11,6 +11,7 @@ export const colors = {
   background: '#F7F7FA',
   surface: '#FFFFFF',
   border: '#EBEBF2',
+  danger: '#C62828',
   sheetHandle: '#D0D0DC',
   overlay: 'rgba(0,0,0,0.35)',
 } as const;
