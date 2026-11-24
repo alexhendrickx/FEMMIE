@@ -1,7 +1,42 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { encryptedStorage } from '../services/secureStorage';
 import type { DailyLog } from '../types/logging';
+
+/**
+ * v0: pre-"daily ritual" shape (shortcuts, reminderTime, quickSymptomIds,
+ * correlationFeedback). v1: the ritual-only shape below.
+ */
+export const LOG_STORE_VERSION = 1;
+
+/**
+ * Persist keys of stores deleted in the daily-ritual refactor. They still hold
+ * encrypted mood/pain/tag data on devices that ran an older build, readable with
+ * the current DEK, yet no screen shows or wipes them. Removing them on upgrade
+ * keeps "what we store" honest.
+ */
+export const LEGACY_STORE_KEYS = ['femmie-mood', 'femmie-pain', 'femmie-tags'] as const;
+
+async function purgeLegacyStores(): Promise<void> {
+  await Promise.all(LEGACY_STORE_KEYS.map((k) => AsyncStorage.removeItem(k).catch(() => {})));
+}
+
+type PersistedLogState = Pick<
+  LogState,
+  'logs' | 'reminderEnabled' | 'cycleLengthPref' | 'phaseContentMuted'
+>;
+
+/** Keep only the fields the current store owns; fill missing ones with defaults. */
+export function migrateLogState(persisted: unknown): PersistedLogState {
+  const p = (persisted ?? {}) as Partial<PersistedLogState>;
+  return {
+    logs: p.logs ?? {},
+    reminderEnabled: p.reminderEnabled ?? false,
+    cycleLengthPref: p.cycleLengthPref ?? 28,
+    phaseContentMuted: p.phaseContentMuted ?? false,
+  };
+}
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -68,6 +103,17 @@ export const useLogStore = create<LogState>()(
       name: 'femmie-logs',
       // Health values (flow, mood, symptoms) — encrypted at rest, never plaintext.
       storage: createJSONStorage(() => encryptedStorage),
+      version: LOG_STORE_VERSION,
+      partialize: (s) => ({
+        logs: s.logs,
+        reminderEnabled: s.reminderEnabled,
+        cycleLengthPref: s.cycleLengthPref,
+        phaseContentMuted: s.phaseContentMuted,
+      }),
+      migrate: async (persisted, version) => {
+        if (version < 1) await purgeLegacyStores();
+        return migrateLogState(persisted);
+      },
     },
   ),
 );

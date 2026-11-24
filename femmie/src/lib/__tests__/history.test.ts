@@ -105,8 +105,13 @@ describe('summarizeDay', () => {
     ]);
   });
 
-  test('an unknown category id falls back gracefully', () => {
-    const [item] = summarizeDay(makeLog(isoAt(0), [{ categoryId: 'mystery', value: true }]));
-    expect(item).toEqual({ categoryId: 'mystery', icon: '•', label: 'mystery', valueLabel: null });
+  test('an id from a removed category reads as a title-cased label', () => {
+    const [item] = summarizeDay(makeLog(isoAt(0), [{ categoryId: 'cervical_mucus', value: true }]));
+    expect(item).toEqual({
+      categoryId: 'cervical_mucus',
+      icon: '•',
+      label: 'Cervical Mucus',
+      valueLabel: null,
+    });
   });
 });
