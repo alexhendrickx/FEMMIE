@@ -7,4 +7,3 @@ export interface EncryptedPayload {
   v: 1;
 }
 
-export type SyncStatus = 'local_only' | 'syncing' | 'synced' | 'error';

@@ -8,7 +8,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import { wipeLocal } from './encryption';
-import { wipeDatabase } from './sqlite';
 import { cancelBedtimeReminder } from '../utils/notifications';
 import { encryptedWritesSettled } from './secureStorage';
 import { useLogStore, LEGACY_STORE_KEYS } from '../store/logStore';
@@ -59,16 +58,14 @@ export async function deleteAccountAndData(signedIn: boolean): Promise<void> {
 
   await step(cancelBedtimeReminder);
 
-  // Reset the log store and let its encrypted re-write land BEFORE the key is
+  // Reset the encrypted stores and let their re-writes land BEFORE the key is
   // destroyed: a write still in flight would call initLocalDEK() afterwards
   // and mint a fresh key in the keychain.
   await step(async () => {
     useLogStore.getState().clearAll();
+    useHealthStore.setState(useHealthStore.getInitialState());
     await encryptedWritesSettled();
     await useLogStore.persist.clearStorage();
-  });
-  await step(async () => {
-    useHealthStore.setState(useHealthStore.getInitialState());
     await useHealthStore.persist.clearStorage();
   });
   await step(async () => {
@@ -78,7 +75,6 @@ export async function deleteAccountAndData(signedIn: boolean): Promise<void> {
   await step(() => Promise.all(LEGACY_STORE_KEYS.map((k) => AsyncStorage.removeItem(k))));
 
   await step(wipeLocal);
-  await step(wipeDatabase);
 
   if (signedIn) {
     // The server session died with the account; this drops the local tokens.

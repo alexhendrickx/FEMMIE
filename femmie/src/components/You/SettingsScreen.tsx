@@ -6,7 +6,7 @@ import { scheduleBedtimeReminder, cancelBedtimeReminder } from '../../utils/noti
 import { colors } from '../../theme/colors';
 
 export function SettingsScreen() {
-  const { isOffline, logout } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const reminderEnabled = useLogStore((s) => s.reminderEnabled);
   const setReminder = useLogStore((s) => s.setReminder);
   const phaseContentMuted = useLogStore((s) => s.phaseContentMuted);
@@ -22,8 +22,19 @@ export function SettingsScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Account</Text>
-        <Text style={styles.line}>Signed in</Text>
-        {isOffline && <Text style={styles.hint}>Offline — changes will sync later</Text>}
+        <View style={styles.card}>
+          {isAuthenticated ? (
+            <>
+              <Text style={styles.rowLabel}>Signed in</Text>
+              <Text style={styles.hint}>Your logs stay on this phone. Backup is coming soon.</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.rowLabel}>Backup is coming soon</Text>
+              <Text style={styles.hint}>Your data stays on this phone.</Text>
+            </>
+          )}
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -58,14 +69,21 @@ export function SettingsScreen() {
         </View>
       </View>
 
-      <TouchableOpacity
-        style={styles.logoutButton}
-        onPress={() => { void logout(); }}
-        accessibilityRole="button"
-        accessibilityLabel="Log out"
-      >
-        <Text style={styles.logoutText}>Log out</Text>
-      </TouchableOpacity>
+      {isAuthenticated && (
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={() => { void logout(); }}
+            accessibilityRole="button"
+            accessibilityLabel="Log out"
+          >
+            <Text style={styles.logoutText}>Log out</Text>
+          </TouchableOpacity>
+          <Text style={[styles.hint, styles.center]}>
+            Logging out keeps your logs on this phone.
+          </Text>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -80,7 +98,16 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textTransform: 'uppercase',
   },
-  line: { fontSize: 15, color: colors.text },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 2,
+  },
+  center: { textAlign: 'center' },
   hint: { fontSize: 13, color: colors.textSecondary },
   row: {
     flexDirection: 'row',

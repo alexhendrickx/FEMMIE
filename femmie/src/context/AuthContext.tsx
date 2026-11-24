@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { signUp, signIn, signInWithApple, signOut, getSession } from '../services/authService';
 import { supabase } from '../services/supabase';
-import { pullFromCloud } from '../services/cloudSync';
-import { initLocalDEK, isEncryptionReady } from '../services/encryption';
+import { initLocalDEK } from '../services/encryption';
 import type { AuthState } from '../types/auth';
 
 interface AuthContextValue extends AuthState {
@@ -31,11 +30,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading: false,
         isOffline: false,
       });
-
-      // Fire-and-forget: pull remote logs if session exists and DEK is ready
-      if (session && isEncryptionReady()) {
-        void pullFromCloud(session.userId);
-      }
     })();
 
     // supabase-js's client keeps the session fresh in the background (auto
@@ -63,21 +57,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState({ session, isAuthenticated: true, isLoading: false, isOffline: false });
     // The encryption key is handled silently on-device; no user passphrase.
     await initLocalDEK();
-    if (session) void pullFromCloud(session.userId);
   };
 
   const login = async (email: string, password: string) => {
     const session = await signIn(email, password);
     setState({ session, isAuthenticated: true, isLoading: false, isOffline: false });
     await initLocalDEK();
-    if (session) void pullFromCloud(session.userId);
   };
 
   const loginWithApple = async (identityToken: string) => {
     const session = await signInWithApple(identityToken);
     setState({ session, isAuthenticated: true, isLoading: false, isOffline: false });
     await initLocalDEK();
-    if (session) void pullFromCloud(session.userId);
   };
 
   const logout = async () => {

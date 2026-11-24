@@ -3,7 +3,6 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -16,27 +15,17 @@ import { colors } from '../../theme/colors';
 
 export function PrivacyScreen() {
   const { session } = useAuth();
-  const {
-    cloudSyncEnabled,
-    syncStatus,
-    lastSyncAt,
-    keyReady,
-    setCloudSync,
-  } = useEncryptionStore();
+  const keyReady = useEncryptionStore((s) => s.keyReady);
 
   const [wipeSheetOpen, setWipeSheetOpen] = useState(false);
   const [wiping, setWiping] = useState(false);
 
-  const handleToggleSync = useCallback(
-    (enabled: boolean) => setCloudSync(enabled),
-    [setCloudSync],
-  );
-
   const handleWipeConfirm = useCallback(async () => {
     setWipeSheetOpen(false);
     setWiping(true);
+    const signedIn = session !== null;
     try {
-      await deleteAccountAndData(session !== null);
+      await deleteAccountAndData(signedIn);
     } catch (e) {
       if (e instanceof AccountDeletionError) {
         Alert.alert(
@@ -45,23 +34,14 @@ export function PrivacyScreen() {
         );
       } else {
         Alert.alert(
-          'Account deleted',
-          "Your account and synced data are gone, but some data on this phone couldn't be removed. Delete the Femmie app to remove it.",
+          signedIn ? 'Account deleted' : 'Not everything was deleted',
+          `${signedIn ? 'Your account is gone, but some' : 'Some'} data on this phone couldn't be removed. Delete the Femmie app to remove it.`,
         );
       }
     } finally {
       setWiping(false);
     }
   }, [session]);
-
-  const syncLabel =
-    syncStatus === 'synced' && lastSyncAt
-      ? `Last synced ${new Date(lastSyncAt).toLocaleString('default', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
-      : syncStatus === 'syncing'
-      ? 'Syncing…'
-      : syncStatus === 'error'
-      ? 'Sync error — will retry'
-      : 'Data lives on this device only';
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
@@ -74,38 +54,24 @@ export function PrivacyScreen() {
 
       {/* What we store */}
       <Section title="What Femmie stores">
-        <InfoRow icon="🩸" label="Cycle logs" desc="Period dates, flow, symptoms, mood — everything you log." />
-        <InfoRow icon="❤️" label="Health signals" desc="Sleep, HRV, and heart rate pulled from Apple Health or Health Connect (only if you allow it)." />
+        <InfoRow icon="🩸" label="Cycle logs" desc="Period dates, flow, symptoms, mood: everything you log." />
+        <InfoRow icon="❤️" label="Health signals" desc="Sleep, HRV, and heart rate from Apple Health or Health Connect, only if you allow it." />
         <InfoRow icon="⚙️" label="App settings" desc="Notification and display preferences." />
-        <InfoRow icon="🔑" label="Encryption key (wrapped)" desc="Your personal data key, locked by your device's secure enclave. We cannot read it." />
+        <InfoRow icon="🔑" label="Encryption key" desc="Your personal data key, kept in the iOS Keychain on this phone. We never receive it." />
       </Section>
 
       {/* Where it lives */}
       <Section title="Where it lives">
         <InfoRow
           icon="📱"
-          label="On this device"
-          desc="All data is stored locally in an encrypted SQLite database. Nothing leaves your phone unless you turn on cloud sync."
+          label="On this phone, encrypted"
+          desc="Everything you log is stored on this phone, encrypted with your key. Nothing is uploaded."
         />
         <InfoRow
           icon="☁️"
-          label="Cloud sync (optional)"
-          desc="If you enable sync, your encrypted data is uploaded to our servers. We store the ciphertext only — we cannot decrypt it."
+          label="Backup"
+          desc="Coming soon. When you turn it on, only encrypted data will leave your phone."
         />
-
-        <View style={styles.syncRow}>
-          <View style={styles.syncLeft}>
-            <Text style={styles.syncLabel}>Cloud backup</Text>
-            <Text style={styles.syncSub}>{syncLabel}</Text>
-          </View>
-          <Switch
-            value={cloudSyncEnabled}
-            onValueChange={handleToggleSync}
-            trackColor={{ false: colors.border, true: colors.fertile + '60' }}
-            thumbColor={cloudSyncEnabled ? colors.fertile : colors.textMuted}
-            accessibilityLabel="Enable cloud backup"
-          />
-        </View>
 
         {/* Encryption status pill */}
         <View style={[styles.pill, keyReady ? styles.pillGreen : styles.pillGrey]}>
@@ -118,22 +84,17 @@ export function PrivacyScreen() {
       {/* Legal access */}
       <Section title="Legal access to your data">
         <Text style={styles.legalText}>
-          <Text style={styles.bold}>If we receive a legal request</Text> (subpoena, court order) for
-          your data, we can only hand over encrypted blobs. We do not hold your decryption key —
-          it lives only on your device.
-          {'\n\n'}
-          We publish an annual transparency report listing the number and jurisdiction of all
-          government data requests we receive.
-          {'\n\n'}
-          If cloud sync is off, there is nothing on our servers to hand over.
+          <Text style={styles.bold}>If we receive a legal request</Text> (subpoena, court order),
+          there is nothing on our servers to hand over. Your logs and your key exist only on this
+          phone.
         </Text>
       </Section>
 
       {/* Wipe */}
       <Section title="Delete your data">
         <Text style={styles.wipeText}>
-          You can remove all your data from this device and our servers at any time. This includes
-          your entire cycle history, health logs, and account.
+          You can remove everything at any time: your cycle history, health logs, settings and, if
+          you have one, your account.
         </Text>
         <TouchableOpacity
           style={[styles.wipeBtn, wiping && styles.wipeBtnDisabled]}
@@ -245,29 +206,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     lineHeight: 18,
-  },
-  // Sync row
-  syncRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 4,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  syncLeft: {
-    flex: 1,
-    marginRight: 12,
-  },
-  syncLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  syncSub: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 2,
   },
   pill: {
     alignSelf: 'flex-start',

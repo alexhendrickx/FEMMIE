@@ -27,8 +27,9 @@ import {
   cyclePhase,
 } from './src/lib/cycle';
 import { todayISO } from './src/components/CycleCalendar/utils';
+import { shouldShowOnboarding } from './src/lib/onboarding';
 
-// ── Main app (shown after auth) ───────────────────────────────────────────────
+// ── Main app (shown after onboarding) ───────────────────────────────────────────────
 function MainApp() {
   const { isOffline } = useAuth();
   const [youOpen, setYouOpen] = useState(false);
@@ -119,9 +120,9 @@ function MainApp() {
   );
 }
 
-// ── Auth gate ─────────────────────────────────────────────────────────────────
+// ── Onboarding gate ────────────────────────────────────────────────────────────────
 function AppGate() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   const onboardingDone = useLogStore((s) => s.onboardingDone);
   const completeOnboarding = useLogStore((s) => s.completeOnboarding);
   // The encrypted store hydrates asynchronously; wait for it so a returning user
@@ -134,7 +135,7 @@ function AppGate() {
   // the calendar are alive from day one (UX decision #16) instead of an empty ring.
   const finishOnboarding = (firstCycleDate: string | null, cycleLength: number) => {
     setCycleLengthPref(cycleLength);
-    // Never overwrite a day that already has a log (e.g. pulled from sync on a new device).
+    // Never overwrite a day that already has a log.
     if (firstCycleDate && !useLogStore.getState().logs[firstCycleDate]) {
       saveLog({
         date: firstCycleDate,
@@ -149,10 +150,11 @@ function AppGate() {
     return <View style={styles.splash} />;
   }
 
-  if (!isAuthenticated || !onboardingDone) {
+  // No account needed: the app is local-first. Signed in or not, onboarding is done once.
+  if (shouldShowOnboarding({ onboardingDone, hydrated })) {
     return (
       <SafeAreaView style={styles.safe}>
-        <OnboardingScreen onComplete={finishOnboarding} signedIn={isAuthenticated} />
+        <OnboardingScreen onComplete={finishOnboarding} />
       </SafeAreaView>
     );
   }

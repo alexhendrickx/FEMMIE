@@ -2,46 +2,40 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { colors } from '../../theme/colors';
 import { Stepper } from '../common/Stepper';
+import { ONBOARDING_STEPS, type OnboardingStep } from '../../lib/onboarding';
 import { Step1Privacy } from './Step1Privacy';
-import { Step2Auth } from './Step2Auth';
 import { Step3CycleDate } from './Step3CycleDate';
 import { Step4CycleLength } from './Step4CycleLength';
 
 interface Props {
   onComplete: (firstCycleDate: string | null, cycleLength: number) => void;
-  /** Already signed in (app was closed mid-onboarding): resume after the account step. */
-  signedIn: boolean;
 }
 
-type Step = 1 | 2 | 3 | 4;
-
-export function OnboardingScreen({ onComplete, signedIn }: Props) {
-  const [step, setStep] = useState<Step>(signedIn ? 3 : 1);
+export function OnboardingScreen({ onComplete }: Props) {
+  const [index, setIndex] = useState(0);
   const [firstDate, setFirstDate] = useState<string | null>(null);
+  const step: OnboardingStep = ONBOARDING_STEPS[index];
+  const next = () => setIndex((i) => Math.min(i + 1, ONBOARDING_STEPS.length - 1));
 
   return (
     <View style={styles.container}>
       <Stepper
-        total={4}
-        current={step}
-        onBack={step > (signedIn ? 3 : 1) ? () => setStep((s) => (s - 1) as Step) : undefined}
+        total={ONBOARDING_STEPS.length}
+        current={index + 1}
+        onBack={index > 0 ? () => setIndex((i) => i - 1) : undefined}
       />
 
-      {step === 1 && <Step1Privacy onNext={() => setStep(2)} />}
-      {step === 2 && <Step2Auth onNext={() => setStep(3)} />}
-      {step === 3 && (
+      {step === 'privacy' && <Step1Privacy onNext={next} />}
+      {step === 'cycleDate' && (
         <Step3CycleDate
           onNext={(date) => {
             setFirstDate(date);
-            setStep(4);
+            next();
           }}
         />
       )}
-      {step === 4 && (
-        <Step4CycleLength
-          initial={28}
-          onDone={(len) => onComplete(firstDate, len)}
-        />
+      {step === 'cycleLength' && (
+        <Step4CycleLength initial={28} onDone={(len) => onComplete(firstDate, len)} />
       )}
     </View>
   );
